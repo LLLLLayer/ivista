@@ -12,7 +12,7 @@ const DEFAULT_WDA_REPO = "https://github.com/appium/WebDriverAgent.git";
 const DEFAULT_WDA_REF = "v9.15.3";
 const DEFAULT_WDA_PORT = 8100;
 
-const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function expandHome(value) {
   if (!value) return value;
@@ -123,7 +123,7 @@ function runCommand(command, args = [], options = {}) {
   const timeoutMs = options.timeoutMs || 30000;
   return new Promise((resolve) => {
     const child = spawn(command, args, {
-      cwd: options.cwd || pluginRoot,
+      cwd: options.cwd || projectRoot,
       env: { ...process.env, ...(options.env || {}) },
       shell: false,
     });
@@ -203,7 +203,7 @@ function spawnDetached(command, args = [], options = {}) {
   const logPath = options.logPath || path.join(options.logDir || path.join(ivistaHome(), "logs"), `${Date.now()}.log`);
   const out = fs.openSync(logPath, "a");
   const child = spawn(command, args, {
-    cwd: options.cwd || pluginRoot,
+    cwd: options.cwd || projectRoot,
     env: { ...process.env, ...(options.env || {}) },
     detached: true,
     stdio: ["ignore", out, out],

@@ -1,19 +1,21 @@
 {
   "name": "ivista",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
   "type": "module",
   "bin": {
-    "ivista": "./plugins/ivista/scripts/ivista-cli.mjs"
+    "ivista": "./bin/ivista.mjs"
   },
   "files": [
+    "bin",
+    "src",
     "plugins/ivista",
     "docs",
     ".agents/plugins/marketplace.json"
   ],
   "scripts": {
-    "check": "node --check plugins/ivista/scripts/ivista-runtime.mjs && node --check plugins/ivista/scripts/ivista-cli.mjs",
-    "doctor": "node plugins/ivista/scripts/ivista-cli.mjs doctor"
+    "check": "node --check src/ivista-runtime.mjs && node --check bin/ivista.mjs",
+    "doctor": "node bin/ivista.mjs doctor"
   },
   "keywords": [
     "ios",

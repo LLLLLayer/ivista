@@ -174,16 +174,25 @@ ivista wda start --simulator "iPhone 16" --wda-path /path/to/WebDriverAgent
 
 首期 Codex Plugin 不直接暴露 MCP tools，而是提供 Skill，指导 Agent 安装和调用 `ivista` CLI。
 
+代码组织上，CLI 不应该放在 Plugin 目录里。合理边界是：
+
+- `bin/`：npm binary 入口，例如 `bin/ivista.mjs`。
+- `src/`：CLI runtime、WDA client、Simulator 控制等实现。
+- `plugins/ivista/`：只保留 Codex Plugin 规范内容，例如 `.codex-plugin/plugin.json`、`skills/` 和 plugin README。
+
+这样用户安装 CLI 时下载 npm 包里的 CLI 代码；用户安装 Plugin 时只下载 Plugin 元数据和 Skill，不把运行时代码塞进 Plugin bundle。
+
 原因：
 
 - 用户和 Agent 使用同一个入口，调试路径更简单。
 - 终端、CI、Codex 都可以复用同一组命令。
 - Plugin 不需要携带额外 MCP server 生命周期和路径解析复杂度。
+- Plugin 目录保持纯净，符合市面上常见的 “thin plugin + external CLI/package” 结构。
 
 Skill 默认流程：
 
 ```bash
-command -v ivista || npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.18
+command -v ivista || npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.19
 ivista update
 ivista doctor
 ivista simulator list
@@ -507,7 +516,7 @@ iVista 可以通过 URL scheme、localhost debug server、WebSocket 或私有 de
 
 - 语言：TypeScript / Node.js
 - CLI：commander 或 cac
-- Plugin：Skill-only，负责安装和调用 CLI
+- Plugin：Skill-only，负责安装和调用 CLI；Plugin 目录不承载 CLI runtime
 - WDA：自研 HTTP client
 - WDA 启动：Simulator 使用 `simctl` + `xcodebuild`，真机使用 `xcodebuild` + `iproxy`
 - 配置：JSON/YAML

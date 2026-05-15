@@ -24,6 +24,8 @@ Do not use iVista for generic web browser automation. Use browser tools for web 
 
 This plugin is skill-only. It does not expose MCP tools. Use the `ivista` CLI from the shell.
 
+The plugin bundle should remain plugin-only. The CLI source lives outside the plugin directory in the repository-level `bin/` and `src/` folders, and users install it through the npm package.
+
 Before using iVista, check whether the CLI is installed:
 
 ```bash
@@ -34,7 +36,7 @@ ivista doctor
 If `ivista` is missing, install it:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.18
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.19
 ```
 
 To update an existing install, run:

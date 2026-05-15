@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
+import { callTool as callRuntimeTool } from "../src/ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.18";
+const CLI_VERSION = "0.1.19";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
