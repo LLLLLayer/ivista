@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.4";
+const CLI_VERSION = "0.1.7";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -28,7 +28,7 @@ function printHelp() {
 Usage:
   ivista update [--ref main]
   ivista doctor [--json]
-  ivista simulator list [--json]
+  ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
   ivista simulator boot --name "iPhone 16"
   ivista wda prepare [--ref v9.15.3]
   ivista wda start --simulator "iPhone 16" [--port 8100]
@@ -43,6 +43,10 @@ Usage:
 
 Options:
   --json                  Print raw JSON output.
+  --all                   Show all Simulator runtimes instead of a compact deduped list.
+  --booted                Show only running Simulators.
+  --iphone                Show only iPhone Simulators.
+  --ipad                  Show only iPad Simulators.
   --simulator <name|udid> Simulator name or UDID.
   --name <name>           Simulator name.
   --udid <udid>           Device or Simulator UDID.
@@ -89,7 +93,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (key === "json" || key === "help") {
+    if (["json", "help", "all", "booted", "iphone", "ipad"].includes(key)) {
       options[key] = true;
       continue;
     }
@@ -206,9 +210,19 @@ function printSimulatorList(payload) {
   }
   console.log("Available Simulators");
   console.log("");
-  for (const device of devices) {
+  const visibleDevices = payload.compact ? devices.slice(0, 12) : devices;
+  const stateWidth = Math.max(...visibleDevices.map((device) => (device.state === "Booted" ? "booted" : "off").length), 3);
+  const nameWidth = Math.max(...visibleDevices.map((device) => device.name.length), 4);
+  for (const device of visibleDevices) {
     const state = device.state === "Booted" ? "booted" : "off";
-    console.log(`${state.padEnd(6)}  ${device.name}  ${device.udid}`);
+    const shortUdid = `${device.udid.slice(0, 8)}...`;
+    console.log(`${state.padEnd(stateWidth)}  ${device.name.padEnd(nameWidth)}  ${shortUdid}`);
+  }
+  if (payload.compact && payload.total > devices.length) {
+    console.log("");
+    const shown = visibleDevices.length;
+    console.log(`Showing ${shown} of ${devices.length} compact results. ${payload.total} simulators total.`);
+    console.log("Use --all to show every runtime, --iphone/--ipad to filter, or --json for full UDIDs.");
   }
 }
 

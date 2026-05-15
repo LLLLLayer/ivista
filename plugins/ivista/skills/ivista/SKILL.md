@@ -34,7 +34,7 @@ ivista doctor
 If `ivista` is missing, install it:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.6
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.7
 ```
 
 To update an existing install, run:

@@ -298,7 +298,7 @@ async function toolSimulatorList(args = {}) {
   } catch {
     return jsonText({ ok: false, error: "Unable to parse simctl JSON", raw: result.stdout });
   }
-  const devices = [];
+  let devices = [];
   for (const [runtime, runtimeDevices] of Object.entries(data.devices || {})) {
     for (const device of runtimeDevices) {
       devices.push({
@@ -310,7 +310,19 @@ async function toolSimulatorList(args = {}) {
       });
     }
   }
-  return jsonText({ ok: true, devices });
+  const total = devices.length;
+  if (args.booted) devices = devices.filter((device) => device.state === "Booted");
+  if (args.iphone) devices = devices.filter((device) => /^iPhone\b/.test(device.name));
+  if (args.ipad) devices = devices.filter((device) => /^iPad\b/.test(device.name));
+  if (!args.all) {
+    const seen = new Set();
+    devices = devices.filter((device) => {
+      if (seen.has(device.name)) return false;
+      seen.add(device.name);
+      return true;
+    });
+  }
+  return jsonText({ ok: true, devices, total, filtered: devices.length, compact: !args.all });
 }
 
 async function resolveSimulator(input) {
@@ -551,7 +563,16 @@ export const tools = {
   },
   ivista_simulator_list: {
     description: "List available iOS Simulators using simctl.",
-    inputSchema: { type: "object", properties: { timeoutMs: { type: "number" } } },
+    inputSchema: {
+      type: "object",
+      properties: {
+        timeoutMs: { type: "number" },
+        all: { type: "boolean" },
+        booted: { type: "boolean" },
+        iphone: { type: "boolean" },
+        ipad: { type: "boolean" },
+      },
+    },
     handler: toolSimulatorList,
   },
   ivista_simulator_boot: {
