@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "ivista": {
+      "command": "node",
+      "args": [
+        "./scripts/ivista-mcp.mjs"
+      ],
+      "env": {
+        "IVISTA_HOME": "~/.ivista",
+        "IVISTA_WDA_REPO": "https://github.com/appium/WebDriverAgent.git",
+        "IVISTA_WDA_REF": "v9.15.3",
+        "IVISTA_WDA_PORT": "8100"
+      }
+    }
+  }
+}

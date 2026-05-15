@@ -1,0 +1,20 @@
+{
+  "name": "ivista-local",
+  "interface": {
+    "displayName": "iVista Local"
+  },
+  "plugins": [
+    {
+      "name": "ivista",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ivista"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
