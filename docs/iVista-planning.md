@@ -183,7 +183,7 @@ ivista wda start --simulator "iPhone 16" --wda-path /path/to/WebDriverAgent
 Skill 默认流程：
 
 ```bash
-command -v ivista || npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.4
+command -v ivista || npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.5
 ivista update
 ivista doctor
 ivista simulator list

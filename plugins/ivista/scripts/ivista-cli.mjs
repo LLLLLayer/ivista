@@ -178,7 +178,20 @@ function printDoctor(payload) {
   console.log(`WDA ref: ${payload.wda?.ref || "unknown"}`);
   console.log(`WDA cache: ${asPath(payload.wda?.cachePath || "")}`);
   console.log("");
-  console.log(payload.ok ? "Ready for Simulator testing." : "Some checks failed. Run with --json for details.");
+  if (payload.ok) {
+    console.log("Ready for Simulator testing.");
+    return;
+  }
+  console.log("Some checks failed.");
+  for (const item of payload.hints || []) {
+    console.log("");
+    console.log(`${item.name}: ${item.hint}`);
+    for (const command of item.commands || []) {
+      console.log(`  ${command}`);
+    }
+  }
+  console.log("");
+  console.log("Run `ivista doctor --json` for full details.");
 }
 
 function printSimulatorList(payload) {
