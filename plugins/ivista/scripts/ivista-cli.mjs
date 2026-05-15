@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.8";
+const CLI_VERSION = "0.1.9";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -153,8 +153,8 @@ function resolveCommand(positionals) {
   return null;
 }
 
-async function callTool(tool, args, timeoutMs) {
-  return await callRuntimeTool(tool, { ...args, timeoutMs });
+async function callTool(tool, args) {
+  return await callRuntimeTool(tool, args);
 }
 
 function extractJson(result) {
@@ -247,6 +247,9 @@ function printSimulatorBoot(payload) {
     console.log("Simulator did not boot.");
     if (payload.error) console.log(`error: ${payload.error}`);
     if (payload.stderr) console.log(payload.stderr);
+    console.log("");
+    console.log("Try `ivista simulator list --booted` to check whether it finished booting anyway.");
+    console.log("If this was only slow, retry with `ivista simulator boot --timeout 180000`.");
     return;
   }
   console.log("Simulator is booted.");
@@ -336,21 +339,22 @@ function printResult(commandKey, result, rawJson) {
   printHuman(commandKey, payload);
 }
 
-async function listSimulatorsForSelection(args, timeoutMs) {
+async function listSimulatorsForSelection(args) {
   const result = await callTool("ivista_simulator_list", {
     all: args.all,
     booted: args.booted,
     iphone: args.iphone,
     ipad: args.ipad,
-  }, timeoutMs);
+    ...(args.timeoutMs ? { timeoutMs: args.timeoutMs } : {}),
+  });
   const payload = extractJson(result);
   if (!payload.ok) throw new Error(payload.error || "Unable to list simulators.");
   return payload.devices || [];
 }
 
-async function resolveSimulatorIndex(args, timeoutMs) {
+async function resolveSimulatorIndex(args) {
   if (!/^\d+$/.test(String(args.simulator || ""))) return args;
-  const devices = await listSimulatorsForSelection(args, timeoutMs);
+  const devices = await listSimulatorsForSelection(args);
   const index = Number(args.simulator) - 1;
   if (index < 0 || index >= devices.length) {
     throw new Error(`Simulator #${args.simulator} was not found. Run \`ivista simulator list\` to see choices.`);
@@ -358,8 +362,8 @@ async function resolveSimulatorIndex(args, timeoutMs) {
   return { ...args, simulator: undefined, udid: devices[index].udid };
 }
 
-async function chooseSimulator(args, timeoutMs) {
-  const devices = await listSimulatorsForSelection(args, timeoutMs);
+async function chooseSimulator(args) {
+  const devices = await listSimulatorsForSelection(args);
   if (devices.length === 0) throw new Error("No available iOS Simulators found.");
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error("Interactive selection requires a terminal. Use `ivista simulator boot 1` or `--name/--udid`.");
@@ -433,16 +437,15 @@ async function main() {
   const args = normalizeOptions(options, positionals);
   delete args.json;
   delete args.help;
-  const timeoutMs = args.timeoutMs || 30000;
   if (command.key === "simulator boot") {
     if (!args.simulator && !args.name && !args.udid) {
-      const selected = await chooseSimulator(args, timeoutMs);
+      const selected = await chooseSimulator(args);
       args.udid = selected.udid;
     } else {
-      Object.assign(args, await resolveSimulatorIndex(args, timeoutMs));
+      Object.assign(args, await resolveSimulatorIndex(args));
     }
   }
-  const result = await callTool(command.tool, args, timeoutMs);
+  const result = await callTool(command.tool, args);
   printResult(command.key, result, Boolean(options.json));
 }
 
