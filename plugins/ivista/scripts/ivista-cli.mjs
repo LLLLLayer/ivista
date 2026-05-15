@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.10";
+const CLI_VERSION = "0.1.11";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -382,7 +382,6 @@ async function chooseSimulator(args) {
   };
 
   const previousRawMode = process.stdin.isRaw;
-  const wasPaused = process.stdin.isPaused();
   process.stdin.setRawMode(true);
   process.stdin.resume();
   render();
@@ -391,7 +390,7 @@ async function chooseSimulator(args) {
     const cleanup = (clearScreen = false) => {
       process.stdin.setRawMode(Boolean(previousRawMode));
       process.stdin.off("data", onData);
-      if (wasPaused) process.stdin.pause();
+      process.stdin.pause();
       process.stdout.write(clearScreen ? "\x1b[2J\x1b[H\x1b[?25h" : "\x1b[?25h\n");
     };
     const onData = (chunk) => {
@@ -451,7 +450,11 @@ async function main() {
   printResult(command.key, result, Boolean(options.json));
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
