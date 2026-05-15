@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.12";
+const CLI_VERSION = "0.1.13";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -26,6 +26,7 @@ function printHelp() {
   console.log(`iVista CLI ${CLI_VERSION}
 
 Usage:
+  ivista version
   ivista update [--ref main]
   ivista doctor [--json]
   ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
@@ -63,6 +64,18 @@ Options:
 `);
 }
 
+function printVersion(rawJson = false) {
+  const payload = {
+    name: "ivista",
+    version: CLI_VERSION,
+  };
+  if (rawJson) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+  console.log(`iVista CLI ${CLI_VERSION}`);
+}
+
 function runInherited(command, args) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { stdio: "inherit", shell: false });
@@ -95,7 +108,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (["json", "help", "all", "booted", "iphone", "ipad"].includes(key)) {
+    if (["json", "help", "version", "all", "booted", "iphone", "ipad"].includes(key)) {
       options[key] = true;
       continue;
     }
@@ -421,6 +434,10 @@ async function chooseSimulator(args) {
 
 async function main() {
   const { positionals, options } = parseArgs(process.argv.slice(2));
+  if (options.version || positionals[0] === "version") {
+    printVersion(Boolean(options.json));
+    return;
+  }
   if (options.help || positionals.length === 0) {
     printHelp();
     return;
