@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.7";
+const CLI_VERSION = "0.1.8";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -29,6 +29,8 @@ Usage:
   ivista update [--ref main]
   ivista doctor [--json]
   ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
+  ivista simulator boot
+  ivista simulator boot 1
   ivista simulator boot --name "iPhone 16"
   ivista wda prepare [--ref v9.15.3]
   ivista wda start --simulator "iPhone 16" [--port 8100]
@@ -133,6 +135,9 @@ function normalizeOptions(options, positionals) {
   if (positionals[0] === "act" && positionals[1] === "input" && typeof out.text !== "string") {
     out.text = positionals.slice(2).join(" ");
   }
+  if (positionals[0] === "simulator" && positionals[1] === "boot" && positionals[2] && !out.simulator && !out.name && !out.udid) {
+    out.simulator = positionals[2];
+  }
   return out;
 }
 
@@ -167,6 +172,23 @@ function mark(ok) {
 
 function asPath(value) {
   return String(value || "").replace(process.env.HOME || "", "~");
+}
+
+function simulatorState(device) {
+  return device.state === "Booted" ? "booted" : "off";
+}
+
+function simulatorRow(device, index, widths, prefix = "") {
+  const number = `${index + 1}.`.padStart(widths.index);
+  return `${prefix}${number}  ${simulatorState(device).padEnd(widths.state)}  ${device.name.padEnd(widths.name)}  ${device.udid}`;
+}
+
+function simulatorWidths(devices) {
+  return {
+    index: String(devices.length).length + 1,
+    state: Math.max(...devices.map((device) => simulatorState(device).length), 3),
+    name: Math.max(...devices.map((device) => device.name.length), 4),
+  };
 }
 
 function printDoctor(payload) {
@@ -210,20 +232,26 @@ function printSimulatorList(payload) {
   }
   console.log("Available Simulators");
   console.log("");
-  const visibleDevices = payload.compact ? devices.slice(0, 12) : devices;
-  const stateWidth = Math.max(...visibleDevices.map((device) => (device.state === "Booted" ? "booted" : "off").length), 3);
-  const nameWidth = Math.max(...visibleDevices.map((device) => device.name.length), 4);
-  for (const device of visibleDevices) {
-    const state = device.state === "Booted" ? "booted" : "off";
-    const shortUdid = `${device.udid.slice(0, 8)}...`;
-    console.log(`${state.padEnd(stateWidth)}  ${device.name.padEnd(nameWidth)}  ${shortUdid}`);
-  }
+  const widths = simulatorWidths(devices);
+  devices.forEach((device, index) => console.log(simulatorRow(device, index, widths)));
   if (payload.compact && payload.total > devices.length) {
     console.log("");
-    const shown = visibleDevices.length;
-    console.log(`Showing ${shown} of ${devices.length} compact results. ${payload.total} simulators total.`);
-    console.log("Use --all to show every runtime, --iphone/--ipad to filter, or --json for full UDIDs.");
+    console.log(`Showing ${devices.length} compact results. ${payload.total} simulators total.`);
+    console.log("Use --all to show every runtime, --iphone/--ipad to filter.");
+    console.log("Run `ivista simulator boot` to choose with arrow keys.");
   }
+}
+
+function printSimulatorBoot(payload) {
+  if (!payload.ok) {
+    console.log("Simulator did not boot.");
+    if (payload.error) console.log(`error: ${payload.error}`);
+    if (payload.stderr) console.log(payload.stderr);
+    return;
+  }
+  console.log("Simulator is booted.");
+  if (payload.device?.name) console.log(`name: ${payload.device.name}`);
+  if (payload.device?.udid) console.log(`udid: ${payload.device.udid}`);
 }
 
 function printWdaCache(payload) {
@@ -291,6 +319,7 @@ function printGeneric(commandKey, payload) {
 function printHuman(commandKey, payload) {
   if (commandKey === "doctor") return printDoctor(payload);
   if (commandKey === "simulator list") return printSimulatorList(payload);
+  if (commandKey === "simulator boot") return printSimulatorBoot(payload);
   if (commandKey === "wda cache status") return printWdaCache(payload);
   if (commandKey === "wda prepare") return printWdaPrepare(payload);
   if (commandKey === "wda start") return printWdaStart(payload);
@@ -305,6 +334,84 @@ function printResult(commandKey, result, rawJson) {
     return;
   }
   printHuman(commandKey, payload);
+}
+
+async function listSimulatorsForSelection(args, timeoutMs) {
+  const result = await callTool("ivista_simulator_list", {
+    all: args.all,
+    booted: args.booted,
+    iphone: args.iphone,
+    ipad: args.ipad,
+  }, timeoutMs);
+  const payload = extractJson(result);
+  if (!payload.ok) throw new Error(payload.error || "Unable to list simulators.");
+  return payload.devices || [];
+}
+
+async function resolveSimulatorIndex(args, timeoutMs) {
+  if (!/^\d+$/.test(String(args.simulator || ""))) return args;
+  const devices = await listSimulatorsForSelection(args, timeoutMs);
+  const index = Number(args.simulator) - 1;
+  if (index < 0 || index >= devices.length) {
+    throw new Error(`Simulator #${args.simulator} was not found. Run \`ivista simulator list\` to see choices.`);
+  }
+  return { ...args, simulator: undefined, udid: devices[index].udid };
+}
+
+async function chooseSimulator(args, timeoutMs) {
+  const devices = await listSimulatorsForSelection(args, timeoutMs);
+  if (devices.length === 0) throw new Error("No available iOS Simulators found.");
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    throw new Error("Interactive selection requires a terminal. Use `ivista simulator boot 1` or `--name/--udid`.");
+  }
+
+  let selected = 0;
+  const widths = simulatorWidths(devices);
+  const render = () => {
+    process.stdout.write("\x1b[2J\x1b[H\x1b[?25l");
+    process.stdout.write("Choose a Simulator\n\n");
+    devices.forEach((device, index) => {
+      const row = simulatorRow(device, index, widths, index === selected ? "> " : "  ");
+      process.stdout.write(index === selected ? `\x1b[7m${row}\x1b[0m\n` : `${row}\n`);
+    });
+    process.stdout.write("\nUse Up/Down, Enter to boot, q to cancel.\n");
+  };
+
+  const previousRawMode = process.stdin.isRaw;
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  render();
+
+  return await new Promise((resolve, reject) => {
+    const cleanup = () => {
+      process.stdin.setRawMode(Boolean(previousRawMode));
+      process.stdin.off("data", onData);
+      process.stdout.write("\x1b[?25h\n");
+    };
+    const onData = (chunk) => {
+      const key = chunk.toString("utf8");
+      if (key === "\u0003" || key === "q" || key === "\u001b") {
+        cleanup();
+        reject(new Error("Selection cancelled."));
+        return;
+      }
+      if (key === "\r" || key === "\n") {
+        cleanup();
+        resolve(devices[selected]);
+        return;
+      }
+      if (key === "\u001b[A") {
+        selected = selected === 0 ? devices.length - 1 : selected - 1;
+        render();
+        return;
+      }
+      if (key === "\u001b[B") {
+        selected = selected === devices.length - 1 ? 0 : selected + 1;
+        render();
+      }
+    };
+    process.stdin.on("data", onData);
+  });
 }
 
 async function main() {
@@ -327,6 +434,14 @@ async function main() {
   delete args.json;
   delete args.help;
   const timeoutMs = args.timeoutMs || 30000;
+  if (command.key === "simulator boot") {
+    if (!args.simulator && !args.name && !args.udid) {
+      const selected = await chooseSimulator(args, timeoutMs);
+      args.udid = selected.udid;
+    } else {
+      Object.assign(args, await resolveSimulatorIndex(args, timeoutMs));
+    }
+  }
   const result = await callTool(command.tool, args, timeoutMs);
   printResult(command.key, result, Boolean(options.json));
 }

@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
   "type": "module",
   "bin": {
