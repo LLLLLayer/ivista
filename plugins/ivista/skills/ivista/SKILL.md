@@ -1,17 +1,18 @@
 ---
 name: ivista
-description: Use iVista when the user wants Codex to inspect, boot, or operate an iOS Simulator or iPhone/iPad through WebDriverAgent, including screenshots, source reads, taps, text input, swipes, app launch/termination, WDA startup, or local mobile smoke-test flows.
+description: Use iVista when the user wants Codex to install or use the ivista CLI to inspect, boot, or operate an iOS Simulator or iPhone/iPad through WebDriverAgent, including screenshots, source reads, taps, text input, swipes, app launch/termination, WDA startup, or local mobile smoke-test flows.
 ---
 
 # iVista
 
-iVista turns an iOS Simulator, iPhone, or iPad into an Agent-operable test surface.
+iVista turns an iOS Simulator, iPhone, or iPad into an Agent-operable test surface through the `ivista` CLI.
 
 ## When To Use
 
 Use this skill when the user asks to:
 
 - Operate an iOS Simulator or iPhone/iPad from Codex.
+- Install or update the `ivista` CLI.
 - Start or check WebDriverAgent.
 - Take a mobile screenshot or read WDA source.
 - Tap, type, swipe, press Home, launch an app, or terminate an app.
@@ -19,16 +20,39 @@ Use this skill when the user asks to:
 
 Do not use iVista for generic web browser automation. Use browser tools for web pages.
 
+## CLI Installation
+
+This plugin is skill-only. It does not expose MCP tools. Use the `ivista` CLI from the shell.
+
+Before using iVista, check whether the CLI is installed:
+
+```bash
+command -v ivista
+ivista doctor
+```
+
+If `ivista` is missing, install it:
+
+```bash
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.2
+```
+
+If the user wants a local development install from the checked-out repo, run:
+
+```bash
+npm install -g .
+```
+
 ## Default Flow
 
 Prefer Simulator first unless the user explicitly asks for a real device.
 
-1. Run `ivista_doctor`.
-2. Run `ivista_simulator_list`.
-3. If needed, run `ivista_simulator_boot`.
-4. Run `ivista_wda_start_simulator`.
-5. Use `ivista_screenshot` and `ivista_source` to observe.
-6. Use deterministic actions such as `ivista_tap`, `ivista_input`, `ivista_swipe`, `ivista_launch_app`, and `ivista_terminate_app`.
+1. Run `ivista doctor`.
+2. Run `ivista simulator list`.
+3. If needed, run `ivista simulator boot --name "<Simulator Name>"`.
+4. Run `ivista wda start --simulator "<Simulator Name>"`.
+5. Use `ivista screen shot` and `ivista screen source` to observe.
+6. Use deterministic actions such as `ivista act tap`, `ivista act input`, `ivista act swipe`, `ivista app launch`, and `ivista app terminate`.
 
 ## WDA Management
 
@@ -37,7 +61,7 @@ iVista manages WebDriverAgent by default. Users should not need to clone or down
 - Default WDA repo: `https://github.com/appium/WebDriverAgent.git`.
 - Default cache: `~/.ivista/cache/webdriveragent/<ref>/`.
 - Override with `IVISTA_WDA_REPO`, `IVISTA_WDA_REF`, or `IVISTA_HOME`.
-- Use explicit `wdaPath` only for offline use, enterprise forks, or WDA debugging.
+- Use explicit `--wda-path` only for offline use, enterprise forks, or WDA debugging.
 
 ## Safety
 

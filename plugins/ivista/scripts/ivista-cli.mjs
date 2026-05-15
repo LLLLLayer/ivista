@@ -1,10 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const mcpServerPath = path.join(scriptDir, "ivista-mcp.mjs");
+import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
 const commandMap = new Map([
   ["doctor", "ivista_doctor"],
@@ -24,7 +19,7 @@ const commandMap = new Map([
 ]);
 
 function printHelp() {
-  console.log(`iVista CLI 0.1.1
+  console.log(`iVista CLI 0.1.2
 
 Usage:
   ivista doctor [--json]
@@ -122,60 +117,8 @@ function resolveCommand(positionals) {
   return null;
 }
 
-function send(child, payload) {
-  const body = JSON.stringify(payload);
-  child.stdin.write(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
-}
-
-function createReader(child) {
-  let buffer = Buffer.alloc(0);
-  return function readOne(timeoutMs = 30000) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`Timed out after ${timeoutMs}ms`)), timeoutMs);
-      child.stdout.on("data", function onData(chunk) {
-        buffer = Buffer.concat([buffer, chunk]);
-        const headerEnd = buffer.indexOf("\r\n\r\n");
-        if (headerEnd === -1) return;
-        const header = buffer.slice(0, headerEnd).toString("utf8");
-        const match = header.match(/Content-Length:\s*(\d+)/i);
-        if (!match) return;
-        const length = Number(match[1]);
-        const bodyStart = headerEnd + 4;
-        const bodyEnd = bodyStart + length;
-        if (buffer.length < bodyEnd) return;
-        const body = buffer.slice(bodyStart, bodyEnd).toString("utf8");
-        buffer = buffer.slice(bodyEnd);
-        child.stdout.off("data", onData);
-        clearTimeout(timer);
-        resolve(JSON.parse(body));
-      });
-    });
-  };
-}
-
 async function callTool(tool, args, timeoutMs) {
-  const child = spawn("node", [mcpServerPath], {
-    cwd: path.resolve(scriptDir, ".."),
-    env: process.env,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  let stderr = "";
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
-  const readOne = createReader(child);
-  try {
-    send(child, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05" } });
-    const init = await readOne(timeoutMs);
-    if (init.error) throw new Error(init.error.message);
-    send(child, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: tool, arguments: args } });
-    const response = await readOne(timeoutMs);
-    if (response.error) throw new Error(response.error.message);
-    return response.result;
-  } finally {
-    child.kill("SIGTERM");
-    if (stderr.trim() && process.env.IVISTA_DEBUG) process.stderr.write(stderr);
-  }
+  return await callRuntimeTool(tool, { ...args, timeoutMs });
 }
 
 function extractJson(result) {

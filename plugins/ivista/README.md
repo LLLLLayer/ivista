@@ -1,11 +1,11 @@
 # iVista Codex Plugin
 
-iVista exposes iOS Simulator and WebDriverAgent controls to Codex through MCP.
+iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control. The plugin contributes a skill that tells Codex how to install and use the `ivista` CLI.
 
 ## Install The CLI
 
 ```bash
-npm install -g github:LLLLLayer/ivista#v0.1.1
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.2
 ivista doctor
 ```
 
@@ -16,38 +16,38 @@ npm install -g .
 ivista doctor
 ```
 
-## What Works In This Plugin
+## What Works In The CLI
 
-- `ivista_doctor`
-- `ivista_simulator_list`
-- `ivista_simulator_boot`
-- `ivista_wda_cache_status`
-- `ivista_wda_prepare`
-- `ivista_wda_start_simulator`
-- `ivista_wda_status`
-- `ivista_screenshot`
-- `ivista_source`
-- `ivista_tap`
-- `ivista_input`
-- `ivista_swipe`
-- `ivista_launch_app`
-- `ivista_terminate_app`
+- `ivista doctor`
+- `ivista simulator list`
+- `ivista simulator boot`
+- `ivista wda cache status`
+- `ivista wda prepare`
+- `ivista wda start`
+- `ivista wda status`
+- `ivista screen shot`
+- `ivista screen source`
+- `ivista act tap`
+- `ivista act input`
+- `ivista act swipe`
+- `ivista app launch`
+- `ivista app terminate`
 
 ## Default User Flow
 
 ```bash
-ivista_doctor
-ivista_simulator_list
-ivista_simulator_boot
-ivista_wda_start_simulator
-ivista_screenshot
+ivista doctor
+ivista simulator list
+ivista simulator boot --name "iPhone 16"
+ivista wda start --simulator "iPhone 16"
+ivista screen shot
 ```
 
 WebDriverAgent is downloaded and cached automatically. Users do not need to clone WDA manually.
 
 ## Configuration
 
-The MCP server accepts these environment variables:
+The CLI accepts these environment variables:
 
 - `IVISTA_HOME`: defaults to `~/.ivista`
 - `IVISTA_WDA_REPO`: defaults to `https://github.com/appium/WebDriverAgent.git`
@@ -55,4 +55,4 @@ The MCP server accepts these environment variables:
 - `IVISTA_WDA_PORT`: defaults to `8100`
 - `IVISTA_WDA_BASE_URL`: overrides the WDA URL for direct connections
 
-Use `wdaPath` only for offline use, enterprise forks, or WDA debugging.
+Use `--wda-path` only for offline use, enterprise forks, or WDA debugging.

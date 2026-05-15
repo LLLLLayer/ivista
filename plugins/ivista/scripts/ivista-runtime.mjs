@@ -6,8 +6,6 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SERVER_NAME = "ivista";
-const SERVER_VERSION = "0.1.0";
 const DEFAULT_WDA_REPO = "https://github.com/appium/WebDriverAgent.git";
 const DEFAULT_WDA_REF = "v9.15.3";
 const DEFAULT_WDA_PORT = 8100;
@@ -500,7 +498,7 @@ async function toolTerminateApp(args = {}) {
   return jsonText({ ok: true, response: response.data });
 }
 
-const tools = {
+export const tools = {
   ivista_doctor: {
     description: "Check local Xcode, simctl, git, iVista cache, and WDA configuration.",
     inputSchema: {
@@ -671,79 +669,16 @@ const tools = {
   },
 };
 
-async function handleRequest(request) {
-  if (request.method === "initialize") {
-    return {
-      protocolVersion: request.params?.protocolVersion || "2024-11-05",
-      capabilities: { tools: {} },
-      serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-    };
-  }
-  if (request.method === "tools/list") {
-    return {
-      tools: Object.entries(tools).map(([name, tool]) => ({
-        name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-      })),
-    };
-  }
-  if (request.method === "tools/call") {
-    const name = request.params?.name;
-    const tool = tools[name];
-    if (!tool) throw new Error(`Unknown tool: ${name}`);
-    return await tool.handler(request.params?.arguments || {});
-  }
-  if (request.method?.startsWith("notifications/")) {
-    return undefined;
-  }
-  throw new Error(`Unsupported method: ${request.method}`);
+export function listTools() {
+  return Object.entries(tools).map(([name, tool]) => ({
+    name,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+  }));
 }
 
-function send(message) {
-  const payload = JSON.stringify(message);
-  process.stdout.write(`Content-Length: ${Buffer.byteLength(payload)}\r\n\r\n${payload}`);
+export async function callTool(name, args = {}) {
+  const tool = tools[name];
+  if (!tool) throw new Error(`Unknown tool: ${name}`);
+  return await tool.handler(args);
 }
-
-let buffer = Buffer.alloc(0);
-
-process.stdin.on("data", (chunk) => {
-  buffer = Buffer.concat([buffer, chunk]);
-  while (true) {
-    const headerEnd = buffer.indexOf("\r\n\r\n");
-    if (headerEnd === -1) return;
-    const header = buffer.slice(0, headerEnd).toString("utf8");
-    const match = header.match(/Content-Length:\s*(\d+)/i);
-    if (!match) {
-      buffer = buffer.slice(headerEnd + 4);
-      continue;
-    }
-    const length = Number(match[1]);
-    const bodyStart = headerEnd + 4;
-    const bodyEnd = bodyStart + length;
-    if (buffer.length < bodyEnd) return;
-    const body = buffer.slice(bodyStart, bodyEnd).toString("utf8");
-    buffer = buffer.slice(bodyEnd);
-    let request;
-    try {
-      request = JSON.parse(body);
-    } catch (error) {
-      send({ jsonrpc: "2.0", id: null, error: { code: -32700, message: error.message } });
-      continue;
-    }
-    Promise.resolve()
-      .then(() => handleRequest(request))
-      .then((result) => {
-        if (request.id !== undefined && result !== undefined) {
-          send({ jsonrpc: "2.0", id: request.id, result });
-        }
-      })
-      .catch((error) => {
-        if (request.id !== undefined) {
-          send({ jsonrpc: "2.0", id: request.id, error: { code: -32000, message: error.message } });
-        }
-      });
-  }
-});
-
-process.stdin.resume();

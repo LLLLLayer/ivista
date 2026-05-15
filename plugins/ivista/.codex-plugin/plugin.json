@@ -1,7 +1,7 @@
 {
   "name": "ivista",
-  "version": "0.1.1",
-  "description": "Agent-native controls for iOS Simulator and iPhone/iPad through WDA.",
+  "version": "0.1.2",
+  "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WDA.",
   "author": {
     "name": "iVista contributors",
     "email": "maintainers@example.com",
@@ -15,20 +15,19 @@
     "simulator",
     "webdriveragent",
     "testing",
-    "mcp"
+    "cli"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "iVista",
     "shortDescription": "Operate iOS Simulator and devices from Codex.",
-    "longDescription": "iVista exposes Agent-friendly tools for discovering iOS Simulators, booting them, starting WebDriverAgent with automatic cache management, and performing WDA-backed screenshots, source reads, taps, text input, swipes, and app launch or terminate actions.",
+    "longDescription": "iVista teaches Codex how to install and use the ivista CLI for discovering iOS Simulators, booting them, starting WebDriverAgent with automatic cache management, and performing WDA-backed screenshots, source reads, taps, text input, swipes, and app launch or terminate actions.",
     "developerName": "iVista contributors",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
       "Automation",
-      "MCP"
+      "CLI"
     ],
     "websiteURL": "https://github.com/LLLLLayer/ivista",
     "privacyPolicyURL": "https://github.com/LLLLLayer/ivista",
