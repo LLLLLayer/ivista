@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.11";
+const CLI_VERSION = "0.1.12";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -445,6 +445,9 @@ async function main() {
     } else {
       Object.assign(args, await resolveSimulatorIndex(args));
     }
+  }
+  if (!options.json && ["wda prepare", "wda start"].includes(command.key)) {
+    args.progress = true;
   }
   const result = await callTool(command.tool, args);
   printResult(command.key, result, Boolean(options.json));

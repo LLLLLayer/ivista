@@ -88,7 +88,9 @@ function runCommand(command, args = [], options = {}) {
       stdout += chunk.toString();
     });
     child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      stderr += text;
+      if (options.onStderr) options.onStderr(text);
     });
     child.on("error", (error) => {
       clearTimeout(timer);
@@ -99,6 +101,33 @@ function runCommand(command, args = [], options = {}) {
       resolve({ ok: code === 0, code, signal, stdout, stderr });
     });
   });
+}
+
+function createGitProgressRenderer(label) {
+  let lastPercent = -1;
+  let lastStage = "";
+  const render = (stage, percent) => {
+    const clamped = Math.max(0, Math.min(100, percent));
+    if (stage === lastStage && clamped === lastPercent) return;
+    lastStage = stage;
+    lastPercent = clamped;
+    const width = 24;
+    const filled = Math.round((clamped / 100) * width);
+    const bar = `${"#".repeat(filled)}${"-".repeat(width - filled)}`;
+    process.stderr.write(`\r${label}: ${stage} [${bar}] ${String(clamped).padStart(3)}%`);
+  };
+  return {
+    update(chunk) {
+      const text = chunk.replace(/\r/g, "\n");
+      for (const line of text.split("\n")) {
+        const match = line.match(/(Receiving objects|Resolving deltas|Updating files):\s+(\d+)%/);
+        if (match) render(match[1], Number(match[2]));
+      }
+    },
+    done() {
+      if (lastPercent >= 0) process.stderr.write("\n");
+    },
+  };
 }
 
 function spawnDetached(command, args = [], options = {}) {
@@ -372,9 +401,13 @@ async function toolWdaPrepare(args = {}) {
     return jsonText({ ok: false, error: `WDA project not found at ${cfg.cachePath}` });
   }
   if (!exists) {
-    const clone = await runCommand("git", ["clone", "--depth", "1", "--branch", cfg.ref, cfg.repo, cfg.cachePath], {
+    const progress = args.progress ? createGitProgressRenderer("Downloading WDA") : null;
+    if (args.progress) process.stderr.write(`Downloading WDA ${cfg.ref} from ${cfg.repo}\n`);
+    const clone = await runCommand("git", ["clone", "--progress", "--depth", "1", "--branch", cfg.ref, cfg.repo, cfg.cachePath], {
       timeoutMs: args.timeoutMs || 300000,
+      onStderr: progress ? (chunk) => progress.update(chunk) : undefined,
     });
+    if (progress) progress.done();
     if (!clone.ok) return jsonText({ ok: false, config: cfg, error: clone.stderr || clone.stdout });
   }
   const metadata = {
