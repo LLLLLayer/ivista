@@ -5,7 +5,7 @@ iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control.
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.5
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.6
 ivista doctor
 ```
 

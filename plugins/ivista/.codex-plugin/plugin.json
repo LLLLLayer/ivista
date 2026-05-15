@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WDA.",
   "author": {
     "name": "iVista contributors",

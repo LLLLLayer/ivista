@@ -207,7 +207,8 @@ function printSimulatorList(payload) {
   console.log("Available Simulators");
   console.log("");
   for (const device of devices) {
-    console.log(`${device.state === "Booted" ? "[BOOTED]" : "[      ]"} ${device.name} (${device.udid})`);
+    const state = device.state === "Booted" ? "booted" : "off";
+    console.log(`${state.padEnd(6)}  ${device.name}  ${device.udid}`);
   }
 }
 
