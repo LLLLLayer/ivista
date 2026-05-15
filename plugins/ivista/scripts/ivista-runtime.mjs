@@ -449,9 +449,15 @@ async function toolWdaCacheStatus(args = {}) {
 async function toolWdaStartSimulator(args = {}) {
   const target = args.simulator || args.name || args.udid;
   if (!target) throw new Error("Provide simulator, name, or udid.");
+  const progress = Boolean(args.progress);
+  const progressLine = (text) => {
+    if (progress) process.stderr.write(`${text}\n`);
+  };
+  progressLine("Preparing Simulator and WDA...");
   const device = await resolveSimulator(target);
   if (!device) throw new Error(`Simulator not found: ${target}`);
   if (device.state !== "Booted") {
+    progressLine(`Booting Simulator: ${device.name}`);
     const bootResult = await toolSimulatorBoot({ ...args, simulator: device.udid });
     const bootText = bootResult.content[0].text;
     const bootJson = JSON.parse(bootText);
@@ -476,6 +482,8 @@ async function toolWdaStartSimulator(args = {}) {
     destination,
     "USE_PORT=" + port,
   ];
+  progressLine(`Starting WebDriverAgent with xcodebuild...`);
+  progressLine(`Log: ${logPath}`);
   const spawned = spawnDetached("xcodebuild", xcodeArgs, { cwd: preparedJson.path, logDir, logPath });
   const baseUrl = `http://127.0.0.1:${port}`;
   writeSession(device.udid, {
@@ -488,11 +496,14 @@ async function toolWdaStartSimulator(args = {}) {
   });
 
   const deadline = Date.now() + (args.waitMs || 90000);
+  const startedWaitingAt = Date.now();
+  let nextProgressAt = 0;
   let lastError = null;
   while (Date.now() < deadline) {
     try {
       const status = await httpJson("GET", `${baseUrl}/status`, undefined, 3000);
       if (status.statusCode >= 200 && status.statusCode < 300) {
+        if (progress) process.stderr.write("\n");
         return jsonText({
           ok: true,
           baseUrl,
@@ -504,8 +515,15 @@ async function toolWdaStartSimulator(args = {}) {
     } catch (error) {
       lastError = error.message;
     }
+    if (progress && Date.now() >= nextProgressAt) {
+      const elapsed = Math.round((Date.now() - startedWaitingAt) / 1000);
+      const remaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      process.stderr.write(`Waiting for WDA /status... ${elapsed}s elapsed, ${remaining}s left\r`);
+      nextProgressAt = Date.now() + 3000;
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
+  if (progress) process.stderr.write("\n");
   return jsonText({
     ok: false,
     baseUrl,
