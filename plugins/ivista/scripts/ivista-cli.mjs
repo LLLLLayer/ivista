@@ -130,13 +130,126 @@ function extractJson(result) {
   }
 }
 
-function printResult(result, rawJson) {
+function mark(ok) {
+  return ok ? "[OK]" : "[FAIL]";
+}
+
+function asPath(value) {
+  return String(value || "").replace(process.env.HOME || "", "~");
+}
+
+function printDoctor(payload) {
+  console.log("iVista Doctor");
+  console.log("");
+  for (const check of payload.checks || []) {
+    const detail = check.stdout ? ` ${check.stdout.split("\n")[0]}` : "";
+    console.log(`${mark(check.ok)} ${check.name}${detail}`);
+    if (!check.ok && check.stderr) console.log(`       ${check.stderr}`);
+  }
+  console.log("");
+  console.log(`iVista home: ${asPath(payload.ivistaHome)}`);
+  console.log(`WDA ref: ${payload.wda?.ref || "unknown"}`);
+  console.log(`WDA cache: ${asPath(payload.wda?.cachePath || "")}`);
+  console.log("");
+  console.log(payload.ok ? "Ready for Simulator testing." : "Some checks failed. Run with --json for details.");
+}
+
+function printSimulatorList(payload) {
+  const devices = payload.devices || [];
+  if (!payload.ok) {
+    console.log(`Simulator list failed: ${payload.error || "unknown error"}`);
+    return;
+  }
+  if (devices.length === 0) {
+    console.log("No available iOS Simulators found.");
+    return;
+  }
+  console.log("Available Simulators");
+  console.log("");
+  for (const device of devices) {
+    console.log(`${device.state === "Booted" ? "[BOOTED]" : "[      ]"} ${device.name} (${device.udid})`);
+  }
+}
+
+function printWdaCache(payload) {
+  if (!payload.ok) {
+    console.log(`WDA cache check failed: ${payload.error || "unknown error"}`);
+    return;
+  }
+  console.log("WDA Cache");
+  console.log("");
+  console.log(`${payload.exists ? "[OK]" : "[MISS]"} ${asPath(payload.config?.cachePath || payload.path || "")}`);
+  if (payload.config?.ref) console.log(`ref: ${payload.config.ref}`);
+  if (payload.config?.repo) console.log(`repo: ${payload.config.repo}`);
+}
+
+function printWdaPrepare(payload) {
+  if (!payload.ok) {
+    console.log(`WDA prepare failed: ${payload.error || "unknown error"}`);
+    return;
+  }
+  console.log("WDA is ready.");
+  console.log(`path: ${asPath(payload.path)}`);
+  console.log(`ref: ${payload.ref}`);
+}
+
+function printWdaStart(payload) {
+  if (!payload.ok) {
+    console.log("WDA did not become ready.");
+    if (payload.error) console.log(`error: ${payload.error}`);
+    if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
+    if (payload.baseUrl) console.log(`url: ${payload.baseUrl}`);
+    return;
+  }
+  console.log("WDA is running.");
+  console.log(`url: ${payload.baseUrl}`);
+  if (payload.pid) console.log(`pid: ${payload.pid}`);
+  if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
+}
+
+function printWdaStatus(payload) {
+  console.log(payload.ok ? "WDA is reachable." : "WDA is not reachable.");
+  if (payload.baseUrl) console.log(`url: ${payload.baseUrl}`);
+}
+
+function printGeneric(commandKey, payload) {
+  if (payload.ok === false) {
+    console.log(`${commandKey} failed.`);
+    if (payload.error) console.log(`error: ${payload.error}`);
+    return;
+  }
+  if (commandKey === "screen shot") {
+    const value = payload.response?.value;
+    console.log("Screenshot captured.");
+    if (typeof value === "string") console.log(`base64 bytes: ${value.length}`);
+    return;
+  }
+  if (commandKey === "screen source") {
+    const value = payload.response?.value;
+    console.log("Source captured.");
+    if (typeof value === "string") console.log(`chars: ${value.length}`);
+    return;
+  }
+  console.log(`${commandKey} ok.`);
+}
+
+function printHuman(commandKey, payload) {
+  if (commandKey === "doctor") return printDoctor(payload);
+  if (commandKey === "simulator list") return printSimulatorList(payload);
+  if (commandKey === "wda cache status") return printWdaCache(payload);
+  if (commandKey === "wda prepare") return printWdaPrepare(payload);
+  if (commandKey === "wda start") return printWdaStart(payload);
+  if (commandKey === "wda status") return printWdaStatus(payload);
+  return printGeneric(commandKey, payload);
+}
+
+function printResult(commandKey, result, rawJson) {
   const payload = extractJson(result);
   if (rawJson || typeof payload !== "object") {
     console.log(typeof payload === "string" ? payload : JSON.stringify(payload, null, 2));
     return;
   }
-  console.log(JSON.stringify(payload, null, 2));
+  printHuman(commandKey, payload);
 }
 
 async function main() {
@@ -156,7 +269,7 @@ async function main() {
   delete args.help;
   const timeoutMs = args.timeoutMs || 30000;
   const result = await callTool(command.tool, args, timeoutMs);
-  printResult(result, Boolean(options.json));
+  printResult(command.key, result, Boolean(options.json));
 }
 
 main().catch((error) => {
