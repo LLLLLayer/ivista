@@ -2,6 +2,20 @@
 
 iVista exposes iOS Simulator and WebDriverAgent controls to Codex through MCP.
 
+## Install The CLI
+
+```bash
+npm install -g github:LLLLLayer/ivista#v0.1.1
+ivista doctor
+```
+
+For local development from this repository:
+
+```bash
+npm install -g .
+ivista doctor
+```
+
 ## What Works In This Plugin
 
 - `ivista_doctor`

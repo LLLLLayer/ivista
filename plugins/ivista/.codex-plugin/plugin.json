@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent-native controls for iOS Simulator and iPhone/iPad through WDA.",
   "author": {
     "name": "iVista contributors",

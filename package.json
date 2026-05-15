@@ -1,0 +1,33 @@
+{
+  "name": "ivista",
+  "version": "0.1.1",
+  "description": "Agent-native controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
+  "type": "module",
+  "bin": {
+    "ivista": "./plugins/ivista/scripts/ivista-cli.mjs"
+  },
+  "files": [
+    "plugins/ivista",
+    "docs",
+    ".agents/plugins/marketplace.json"
+  ],
+  "scripts": {
+    "check": "node --check plugins/ivista/scripts/ivista-mcp.mjs && node --check plugins/ivista/scripts/ivista-cli.mjs",
+    "doctor": "node plugins/ivista/scripts/ivista-cli.mjs doctor"
+  },
+  "keywords": [
+    "ios",
+    "simulator",
+    "webdriveragent",
+    "testing",
+    "mcp",
+    "codex"
+  ],
+  "author": "iVista contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/LLLLLayer/ivista.git"
+  },
+  "homepage": "https://github.com/LLLLLayer/ivista"
+}
