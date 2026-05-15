@@ -1,5 +1,9 @@
 #!/usr/bin/env node
+import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
+
+const CLI_VERSION = "0.1.4";
+const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
   ["doctor", "ivista_doctor"],
@@ -19,9 +23,10 @@ const commandMap = new Map([
 ]);
 
 function printHelp() {
-  console.log(`iVista CLI 0.1.2
+  console.log(`iVista CLI ${CLI_VERSION}
 
 Usage:
+  ivista update [--ref main]
   ivista doctor [--json]
   ivista simulator list [--json]
   ivista simulator boot --name "iPhone 16"
@@ -50,6 +55,28 @@ Options:
   --timeout <ms>          Command timeout in milliseconds.
   --wait <ms>             WDA startup wait timeout in milliseconds.
 `);
+}
+
+function runInherited(command, args) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { stdio: "inherit", shell: false });
+    child.on("error", (error) => {
+      console.error(error.message);
+      resolve(1);
+    });
+    child.on("close", (code) => resolve(code || 0));
+  });
+}
+
+async function updateCli(options) {
+  const ref = options.ref || "main";
+  const spec = `${INSTALL_REPO}#${ref}`;
+  console.log(`Updating iVista CLI from ${spec}`);
+  console.log("");
+  const code = await runInherited("npm", ["install", "-g", spec]);
+  if (code !== 0) process.exit(code);
+  console.log("");
+  console.log("iVista CLI updated.");
 }
 
 function parseArgs(argv) {
@@ -256,6 +283,10 @@ async function main() {
   const { positionals, options } = parseArgs(process.argv.slice(2));
   if (options.help || positionals.length === 0) {
     printHelp();
+    return;
+  }
+  if (positionals[0] === "update") {
+    await updateCli(options);
     return;
   }
   const command = resolveCommand(positionals);
