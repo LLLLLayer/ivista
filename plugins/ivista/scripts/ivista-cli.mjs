@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.16";
+const CLI_VERSION = "0.1.17";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -12,9 +12,11 @@ const commandMap = new Map([
   ["wda cache status", "ivista_wda_cache_status"],
   ["wda prepare", "ivista_wda_prepare"],
   ["wda start", "ivista_wda_start_simulator"],
+  ["wda stop", "ivista_wda_stop"],
   ["wda status", "ivista_wda_status"],
   ["screen shot", "ivista_screenshot"],
   ["screen source", "ivista_source"],
+  ["act home", "ivista_home"],
   ["act tap", "ivista_tap"],
   ["act input", "ivista_input"],
   ["act swipe", "ivista_swipe"],
@@ -35,9 +37,12 @@ Usage:
   ivista simulator boot --name "iPhone 16"
   ivista wda prepare [--ref v9.15.3]
   ivista wda start --simulator "iPhone 16" [--port 8100]
+  ivista wda start --simulator "iPhone 16" --auto-port
+  ivista wda stop [--port 8100]
   ivista wda status [--port 8100]
-  ivista screen shot [--port 8100]
+  ivista screen shot [--port 8100] [--output /tmp/ivista.png]
   ivista screen source [--port 8100]
+  ivista act home [--port 8100]
   ivista act tap --x 120 --y 500
   ivista act input "hello"
   ivista act swipe --direction up
@@ -50,12 +55,14 @@ Options:
   --booted                Show only running Simulators.
   --iphone                Show only iPhone Simulators.
   --ipad                  Show only iPad Simulators.
+  --auto-port             Find an available WDA port automatically.
   --simulator <name|udid> Simulator name or UDID.
   --name <name>           Simulator name.
   --udid <udid>           Device or Simulator UDID.
   --bundle-id <id>        App bundle id.
   --base-url <url>        WDA base URL.
   --port <port>           WDA port. Defaults to 8100.
+  --output <path>         Output path for commands that save files.
   --wda-path <path>       Use an explicit WDA project path.
   --repo <url>            WDA git repository.
   --ref <ref>             WDA git ref. Defaults to v9.15.3.
@@ -108,7 +115,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (["json", "help", "version", "all", "booted", "iphone", "ipad"].includes(key)) {
+    if (["json", "help", "version", "all", "booted", "iphone", "ipad", "auto-port"].includes(key)) {
       options[key] = true;
       continue;
     }
@@ -129,6 +136,7 @@ function normalizeOptions(options, positionals) {
     "bundle-id": "bundleId",
     "base-url": "baseUrl",
     "wda-path": "wdaPath",
+    "auto-port": "autoPort",
   };
   for (const [key, value] of Object.entries(options)) {
     const normalized = aliases[key] || key;
@@ -296,14 +304,36 @@ function printWdaStart(payload) {
   if (!payload.ok) {
     console.log("WDA did not become ready.");
     if (payload.error) console.log(`error: ${payload.error}`);
+    if (payload.hint) console.log(`hint: ${payload.hint}`);
     if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
     if (payload.baseUrl) console.log(`url: ${payload.baseUrl}`);
     return;
   }
   console.log("WDA is running.");
   console.log(`url: ${payload.baseUrl}`);
+  if (payload.port) console.log(`port: ${payload.port}`);
   if (payload.pid) console.log(`pid: ${payload.pid}`);
   if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
+}
+
+function printWdaStop(payload) {
+  if (!payload.ok) {
+    console.log("WDA stop failed.");
+    if (payload.error) console.log(`error: ${payload.error}`);
+    return;
+  }
+  const stopped = payload.stopped || [];
+  if (stopped.length === 0) {
+    console.log("No WDA session found.");
+    return;
+  }
+  console.log("WDA stop requested.");
+  for (const item of stopped) {
+    const status = item.ok ? "[OK]" : "[WARN]";
+    const pid = item.pid ? ` pid=${item.pid}` : "";
+    console.log(`${status} ${item.simulator}${pid}`);
+    if (!item.ok && item.message) console.log(`       ${item.message}`);
+  }
 }
 
 function printWdaStatus(payload) {
@@ -320,6 +350,7 @@ function printGeneric(commandKey, payload) {
   if (commandKey === "screen shot") {
     const value = payload.response?.value;
     console.log("Screenshot captured.");
+    if (payload.output) console.log(`output: ${asPath(payload.output)}`);
     if (typeof value === "string") console.log(`base64 bytes: ${value.length}`);
     return;
   }
@@ -339,6 +370,7 @@ function printHuman(commandKey, payload) {
   if (commandKey === "wda cache status") return printWdaCache(payload);
   if (commandKey === "wda prepare") return printWdaPrepare(payload);
   if (commandKey === "wda start") return printWdaStart(payload);
+  if (commandKey === "wda stop") return printWdaStop(payload);
   if (commandKey === "wda status") return printWdaStatus(payload);
   return printGeneric(commandKey, payload);
 }

@@ -2,6 +2,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
@@ -63,6 +64,59 @@ function readSession(targetId = "default") {
   } catch {
     return {};
   }
+}
+
+function sessionPort(data) {
+  if (data?.port) return Number(data.port);
+  try {
+    return Number(new URL(data?.baseUrl || "http://127.0.0.1:0").port);
+  } catch {
+    return 0;
+  }
+}
+
+function listSessions() {
+  try {
+    return fs.readdirSync(sessionDir())
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => {
+        const file = path.join(sessionDir(), name);
+        try {
+          return { file, data: JSON.parse(fs.readFileSync(file, "utf8")) };
+        } catch {
+          return { file, data: null };
+        }
+      })
+      .filter((item) => item.data);
+  } catch {
+    return [];
+  }
+}
+
+function removeSessionFile(file) {
+  try {
+    fs.unlinkSync(file);
+  } catch {
+    // Ignore stale session cleanup errors.
+  }
+}
+
+function isPortAvailable(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, "127.0.0.1");
+  });
+}
+
+async function findAvailablePort(startPort) {
+  for (let port = startPort; port < startPort + 100; port += 1) {
+    if (await isPortAvailable(port)) return port;
+  }
+  throw new Error(`No available port found in range ${startPort}-${startPort + 99}`);
 }
 
 function runCommand(command, args = [], options = {}) {
@@ -467,7 +521,9 @@ async function toolWdaStartSimulator(args = {}) {
   const preparedJson = JSON.parse(prepared.content[0].text);
   if (!preparedJson.ok) return prepared;
 
-  const port = String(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
+  const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
+  const selectedPort = args.autoPort ? await findAvailablePort(requestedPort) : requestedPort;
+  const port = String(selectedPort);
   const logDir = path.join(ivistaHome(), "logs");
   ensureDir(logDir);
   const logPath = path.join(logDir, `wda-simulator-${device.udid}-${Date.now()}.log`);
@@ -490,6 +546,7 @@ async function toolWdaStartSimulator(args = {}) {
     targetType: "simulator",
     simulator: device,
     baseUrl,
+    port: selectedPort,
     pid: spawned.pid,
     logPath: spawned.logPath,
     startedAt: new Date().toISOString(),
@@ -507,6 +564,7 @@ async function toolWdaStartSimulator(args = {}) {
         return jsonText({
           ok: true,
           baseUrl,
+          port: selectedPort,
           pid: spawned.pid,
           logPath: spawned.logPath,
           status: status.data,
@@ -527,10 +585,46 @@ async function toolWdaStartSimulator(args = {}) {
   return jsonText({
     ok: false,
     baseUrl,
+    port: selectedPort,
     pid: spawned.pid,
     logPath: spawned.logPath,
     error: lastError || "Timed out waiting for WDA /status.",
+    hint: "If WebDriverAgentRunner crashed or the port is busy, try `ivista wda stop` and then `ivista wda start --auto-port`.",
   });
+}
+
+async function toolWdaStop(args = {}) {
+  const wantedPort = args.port ? Number(args.port) : null;
+  const wantedTarget = args.simulator || args.udid || args.name || null;
+  const sessions = listSessions();
+  const matching = sessions.filter(({ data }) => {
+    if (wantedPort && sessionPort(data) !== wantedPort) return false;
+    if (wantedTarget && data.simulator?.udid !== wantedTarget && data.simulator?.name !== wantedTarget) return false;
+    return data.targetType === "simulator";
+  });
+  const targets = matching.length > 0 ? matching : [{ file: null, data: { simulator: { udid: wantedTarget || "booted" } } }];
+  const stopped = [];
+  for (const { file, data } of targets) {
+    if (data.pid) {
+      try {
+        process.kill(data.pid, "SIGTERM");
+      } catch {
+        // xcodebuild may already be gone.
+      }
+    }
+    const simTarget = data.simulator?.udid || wantedTarget || "booted";
+    const terminate = await runCommand("xcrun", ["simctl", "terminate", simTarget, "com.facebook.WebDriverAgentRunner.xctrunner"], {
+      timeoutMs: args.timeoutMs || 15000,
+    });
+    if (file) removeSessionFile(file);
+    stopped.push({
+      simulator: simTarget,
+      pid: data.pid || null,
+      ok: terminate.ok || /not running|No such process|The operation couldn/i.test(terminate.stderr),
+      message: (terminate.stderr || terminate.stdout || "").trim(),
+    });
+  }
+  return jsonText({ ok: true, stopped });
 }
 
 async function toolWdaStatus(args = {}) {
@@ -541,7 +635,15 @@ async function toolWdaStatus(args = {}) {
 
 async function toolScreenshot(args = {}) {
   const response = await callWda(args, "GET", ["/screenshot", "/session/:sessionId/screenshot"]);
-  return jsonText({ ok: true, response: response.data });
+  let output = null;
+  if (args.output) {
+    const value = response.data?.value || response.data;
+    if (typeof value !== "string") throw new Error("WDA screenshot response did not contain base64 image data.");
+    output = path.resolve(expandHome(args.output));
+    ensureDir(path.dirname(output));
+    fs.writeFileSync(output, Buffer.from(value, "base64"));
+  }
+  return jsonText({ ok: true, output, response: response.data });
 }
 
 async function toolSource(args = {}) {
@@ -592,6 +694,11 @@ async function toolSwipe(args = {}) {
   }
   const body = { ...points, duration: Number(args.duration || 0.25) };
   const response = await callWda(args, "POST", ["/session/:sessionId/wda/dragfromtoforduration"], body);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolHome(args = {}) {
+  const response = await callWda(args, "POST", ["/wda/homescreen", "/session/:sessionId/wda/homescreen"]);
   return jsonText({ ok: true, response: response.data });
 }
 
@@ -689,11 +796,26 @@ export const tools = {
         ref: { type: "string" },
         wdaPath: { type: "string" },
         port: { type: "number" },
+        autoPort: { type: "boolean" },
         waitMs: { type: "number" },
         timeoutMs: { type: "number" },
       },
     },
     handler: toolWdaStartSimulator,
+  },
+  ivista_wda_stop: {
+    description: "Stop WebDriverAgent for a Simulator, terminating the runner app and cleaning the saved session.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        simulator: { type: "string" },
+        udid: { type: "string" },
+        name: { type: "string" },
+        port: { type: "number" },
+        timeoutMs: { type: "number" },
+      },
+    },
+    handler: toolWdaStop,
   },
   ivista_wda_status: {
     description: "Read WDA /status from the configured base URL.",
@@ -709,7 +831,7 @@ export const tools = {
   },
   ivista_screenshot: {
     description: "Take a WDA screenshot. Returns the WDA JSON response, usually with base64 image data.",
-    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" }, output: { type: "string" } } },
     handler: toolScreenshot,
   },
   ivista_source: {
@@ -762,6 +884,17 @@ export const tools = {
       },
     },
     handler: toolSwipe,
+  },
+  ivista_home: {
+    description: "Press the iOS Home button through WDA.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolHome,
   },
   ivista_launch_app: {
     description: "Launch an app by bundle id through WDA.",

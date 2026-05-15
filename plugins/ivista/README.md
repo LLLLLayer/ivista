@@ -5,7 +5,7 @@ iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control.
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.16
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.17
 ivista doctor
 ```
 
@@ -30,9 +30,11 @@ ivista doctor
 - `ivista wda cache status`
 - `ivista wda prepare`
 - `ivista wda start`
+- `ivista wda stop`
 - `ivista wda status`
 - `ivista screen shot`
 - `ivista screen source`
+- `ivista act home`
 - `ivista act tap`
 - `ivista act input`
 - `ivista act swipe`
@@ -45,11 +47,15 @@ ivista doctor
 ivista doctor
 ivista simulator list
 ivista simulator boot --name "iPhone 16"
-ivista wda start --simulator "iPhone 16"
-ivista screen shot
+ivista wda start --simulator "iPhone 16" --auto-port
+ivista screen shot --output /tmp/ivista.png
+ivista act home
+ivista wda stop
 ```
 
 WebDriverAgent is downloaded and cached automatically. Users do not need to clone WDA manually.
+
+Use `--auto-port` when port 8100 is already occupied or a previous WDA runner crashed. Use `ivista wda stop --port <port>` to terminate the runner app and clean the saved session.
 
 ## Configuration
 

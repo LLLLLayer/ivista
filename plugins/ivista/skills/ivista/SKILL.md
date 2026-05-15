@@ -34,7 +34,7 @@ ivista doctor
 If `ivista` is missing, install it:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.16
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.17
 ```
 
 To update an existing install, run:
@@ -56,9 +56,10 @@ Prefer Simulator first unless the user explicitly asks for a real device.
 1. Run `ivista doctor`.
 2. Run `ivista simulator list`.
 3. If needed, run `ivista simulator boot --name "<Simulator Name>"`.
-4. Run `ivista wda start --simulator "<Simulator Name>"`.
-5. Use `ivista screen shot` and `ivista screen source` to observe.
-6. Use deterministic actions such as `ivista act tap`, `ivista act input`, `ivista act swipe`, `ivista app launch`, and `ivista app terminate`.
+4. Run `ivista wda start --simulator "<Simulator Name>" --auto-port`.
+5. Use `ivista screen shot --output /tmp/ivista.png` and `ivista screen source` to observe.
+6. Use deterministic actions such as `ivista act home`, `ivista act tap`, `ivista act input`, `ivista act swipe`, `ivista app launch`, and `ivista app terminate`.
+7. Run `ivista wda stop --port <port>` when the user wants to stop the current WDA runner.
 
 ## WDA Management
 
@@ -68,6 +69,7 @@ iVista manages WebDriverAgent by default. Users should not need to clone or down
 - Default cache: `~/.ivista/cache/webdriveragent/<ref>/`.
 - Override with `IVISTA_WDA_REPO`, `IVISTA_WDA_REF`, or `IVISTA_HOME`.
 - Use explicit `--wda-path` only for offline use, enterprise forks, or WDA debugging.
+- Use `--auto-port` if the default port is busy or a previous WebDriverAgent runner crashed.
 
 ## Safety
 
