@@ -105,27 +105,44 @@ function runCommand(command, args = [], options = {}) {
 
 function createGitProgressRenderer(label) {
   let lastPercent = -1;
-  let lastStage = "";
+  let lastText = "";
+  let frame = 0;
+  const frames = ["-", "\\", "|", "/"];
+  const clean = (line) => line
+    .replace(/^remote:\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
   const render = (stage, percent) => {
     const clamped = Math.max(0, Math.min(100, percent));
-    if (stage === lastStage && clamped === lastPercent) return;
-    lastStage = stage;
-    lastPercent = clamped;
-    const width = 24;
+    const width = 20;
     const filled = Math.round((clamped / 100) * width);
     const bar = `${"#".repeat(filled)}${"-".repeat(width - filled)}`;
-    process.stderr.write(`\r${label}: ${stage} [${bar}] ${String(clamped).padStart(3)}%`);
+    lastText = `${stage} [${bar}] ${String(clamped).padStart(3)}%`;
+    lastPercent = clamped;
+    process.stderr.write(`\r${label}: ${lastText}`.padEnd(100));
+  };
+  const renderText = (line) => {
+    const text = clean(line);
+    if (!text || text === lastText) return;
+    lastText = text;
+    const spinner = frames[frame % frames.length];
+    frame += 1;
+    process.stderr.write(`\r${label}: ${spinner} ${text}`.padEnd(100));
   };
   return {
     update(chunk) {
       const text = chunk.replace(/\r/g, "\n");
       for (const line of text.split("\n")) {
-        const match = line.match(/(Receiving objects|Resolving deltas|Updating files):\s+(\d+)%/);
-        if (match) render(match[1], Number(match[2]));
+        const match = line.match(/(Enumerating objects|Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files):\s+(\d+)%/);
+        if (match) {
+          render(match[1], Number(match[2]));
+        } else {
+          renderText(line);
+        }
       }
     },
     done() {
-      if (lastPercent >= 0) process.stderr.write("\n");
+      if (lastText) process.stderr.write("\n");
     },
   };
 }
