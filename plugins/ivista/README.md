@@ -5,7 +5,7 @@ iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control.
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.17
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.18
 ivista doctor
 ```
 
@@ -36,8 +36,26 @@ ivista doctor
 - `ivista screen source`
 - `ivista act home`
 - `ivista act tap`
+- `ivista act double-tap`
+- `ivista act two-finger-tap`
+- `ivista act long-press`
+- `ivista act drag`
+- `ivista act pinch`
+- `ivista act rotate`
 - `ivista act input`
 - `ivista act swipe`
+- `ivista keyboard dismiss`
+- `ivista alert accept`
+- `ivista alert dismiss`
+- `ivista alert text`
+- `ivista alert input`
+- `ivista alert buttons`
+- `ivista device lock`
+- `ivista device unlock`
+- `ivista device locked`
+- `ivista device info`
+- `ivista device battery`
+- `ivista device press`
 - `ivista app launch`
 - `ivista app terminate`
 

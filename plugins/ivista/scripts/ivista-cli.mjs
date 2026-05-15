@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "./ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.17";
+const CLI_VERSION = "0.1.18";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -18,8 +18,26 @@ const commandMap = new Map([
   ["screen source", "ivista_source"],
   ["act home", "ivista_home"],
   ["act tap", "ivista_tap"],
+  ["act double-tap", "ivista_double_tap"],
+  ["act two-finger-tap", "ivista_two_finger_tap"],
+  ["act long-press", "ivista_long_press"],
+  ["act drag", "ivista_drag"],
+  ["act pinch", "ivista_pinch"],
+  ["act rotate", "ivista_rotate"],
   ["act input", "ivista_input"],
   ["act swipe", "ivista_swipe"],
+  ["keyboard dismiss", "ivista_keyboard_dismiss"],
+  ["alert accept", "ivista_alert_accept"],
+  ["alert dismiss", "ivista_alert_dismiss"],
+  ["alert text", "ivista_alert_text"],
+  ["alert input", "ivista_alert_input"],
+  ["alert buttons", "ivista_alert_buttons"],
+  ["device lock", "ivista_device_lock"],
+  ["device unlock", "ivista_device_unlock"],
+  ["device locked", "ivista_device_locked"],
+  ["device info", "ivista_device_info"],
+  ["device battery", "ivista_device_battery"],
+  ["device press", "ivista_device_press"],
   ["app launch", "ivista_launch_app"],
   ["app terminate", "ivista_terminate_app"],
 ]);
@@ -44,8 +62,26 @@ Usage:
   ivista screen source [--port 8100]
   ivista act home [--port 8100]
   ivista act tap --x 120 --y 500
+  ivista act double-tap --x 120 --y 500
+  ivista act two-finger-tap
+  ivista act long-press --x 120 --y 500 [--duration 1]
+  ivista act drag --from-x 100 --from-y 600 --to-x 300 --to-y 200 [--duration 0.5]
+  ivista act pinch --scale 0.5 --velocity -1
+  ivista act rotate --rotation 1.57 --velocity 1
   ivista act input "hello"
   ivista act swipe --direction up
+  ivista keyboard dismiss
+  ivista alert accept [--name OK]
+  ivista alert dismiss [--name Cancel]
+  ivista alert text
+  ivista alert input "hello"
+  ivista alert buttons
+  ivista device lock
+  ivista device unlock
+  ivista device locked
+  ivista device info
+  ivista device battery
+  ivista device press --name volumeUp
   ivista app launch --bundle-id com.example.app
   ivista app terminate --bundle-id com.example.app
 
@@ -63,6 +99,11 @@ Options:
   --base-url <url>        WDA base URL.
   --port <port>           WDA port. Defaults to 8100.
   --output <path>         Output path for commands that save files.
+  --duration <seconds>    Gesture duration in seconds.
+  --scale <number>        Pinch scale. Values under 1 zoom out; over 1 zoom in.
+  --velocity <number>     Gesture velocity.
+  --rotation <radians>    Rotation gesture amount in radians.
+  --key-names <names>     Comma-separated keyboard dismissal key names.
   --wda-path <path>       Use an explicit WDA project path.
   --repo <url>            WDA git repository.
   --ref <ref>             WDA git ref. Defaults to v9.15.3.
@@ -137,12 +178,17 @@ function normalizeOptions(options, positionals) {
     "base-url": "baseUrl",
     "wda-path": "wdaPath",
     "auto-port": "autoPort",
+    "from-x": "fromX",
+    "from-y": "fromY",
+    "to-x": "toX",
+    "to-y": "toY",
+    "key-names": "keyNames",
   };
   for (const [key, value] of Object.entries(options)) {
     const normalized = aliases[key] || key;
     out[normalized] = value;
   }
-  for (const key of ["port", "timeout", "wait", "x", "y", "width", "height", "fromX", "fromY", "toX", "toY", "duration"]) {
+  for (const key of ["port", "timeout", "wait", "x", "y", "width", "height", "fromX", "fromY", "toX", "toY", "duration", "scale", "velocity", "rotation"]) {
     if (out[key] !== undefined) out[key] = Number(out[key]);
   }
   if (out.timeout !== undefined) {
@@ -154,6 +200,9 @@ function normalizeOptions(options, positionals) {
     delete out.wait;
   }
   if (positionals[0] === "act" && positionals[1] === "input" && typeof out.text !== "string") {
+    out.text = positionals.slice(2).join(" ");
+  }
+  if (positionals[0] === "alert" && positionals[1] === "input" && typeof out.text !== "string") {
     out.text = positionals.slice(2).join(" ");
   }
   if (positionals[0] === "simulator" && positionals[1] === "boot" && positionals[2] && !out.simulator && !out.name && !out.udid) {
@@ -358,6 +407,12 @@ function printGeneric(commandKey, payload) {
     const value = payload.response?.value;
     console.log("Source captured.");
     if (typeof value === "string") console.log(`chars: ${value.length}`);
+    return;
+  }
+  if (["alert text", "alert buttons", "device locked", "device info", "device battery"].includes(commandKey)) {
+    const value = payload.response?.value ?? payload.response;
+    console.log(`${commandKey}:`);
+    console.log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
     return;
   }
   console.log(`${commandKey} ok.`);

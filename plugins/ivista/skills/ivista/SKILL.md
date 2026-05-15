@@ -34,7 +34,7 @@ ivista doctor
 If `ivista` is missing, install it:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.17
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.18
 ```
 
 To update an existing install, run:
@@ -58,7 +58,7 @@ Prefer Simulator first unless the user explicitly asks for a real device.
 3. If needed, run `ivista simulator boot --name "<Simulator Name>"`.
 4. Run `ivista wda start --simulator "<Simulator Name>" --auto-port`.
 5. Use `ivista screen shot --output /tmp/ivista.png` and `ivista screen source` to observe.
-6. Use deterministic actions such as `ivista act home`, `ivista act tap`, `ivista act input`, `ivista act swipe`, `ivista app launch`, and `ivista app terminate`.
+6. Use deterministic actions such as `ivista act home`, `ivista act tap`, `ivista act double-tap`, `ivista act long-press`, `ivista act drag`, `ivista act pinch`, `ivista act input`, `ivista act swipe`, `ivista keyboard dismiss`, `ivista alert accept`, `ivista device info`, `ivista app launch`, and `ivista app terminate`.
 7. Run `ivista wda stop --port <port>` when the user wants to stop the current WDA runner.
 
 ## WDA Management

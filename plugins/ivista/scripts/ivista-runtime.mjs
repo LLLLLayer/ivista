@@ -659,6 +659,13 @@ async function toolTap(args = {}) {
   return jsonText({ ok: true, response: response.data });
 }
 
+function coordinateBody(args = {}) {
+  const x = Number(args.x);
+  const y = Number(args.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Provide numeric x and y.");
+  return { x, y };
+}
+
 async function toolInput(args = {}) {
   if (typeof args.text !== "string") throw new Error("Provide text.");
   const body = { value: [...args.text], text: args.text };
@@ -697,8 +704,121 @@ async function toolSwipe(args = {}) {
   return jsonText({ ok: true, response: response.data });
 }
 
+async function toolDoubleTap(args = {}) {
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/doubleTap", "/wda/doubleTap"], coordinateBody(args));
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolTwoFingerTap(args = {}) {
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/twoFingerTap", "/wda/twoFingerTap"], {});
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolLongPress(args = {}) {
+  const duration = Number(args.duration || 1);
+  if (!Number.isFinite(duration)) throw new Error("Provide numeric duration.");
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/touchAndHold", "/wda/touchAndHold"], {
+    ...coordinateBody(args),
+    duration,
+  });
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDrag(args = {}) {
+  const points = swipePoints(args);
+  for (const [key, value] of Object.entries(points)) {
+    if (!Number.isFinite(value)) throw new Error(`Provide numeric ${key}.`);
+  }
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/dragfromtoforduration", "/wda/dragfromtoforduration"], {
+    ...points,
+    duration: Number(args.duration || 0.5),
+  });
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolPinch(args = {}) {
+  const scale = Number(args.scale);
+  const velocity = Number(args.velocity);
+  if (!Number.isFinite(scale) || !Number.isFinite(velocity)) throw new Error("Provide numeric scale and velocity.");
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/pinch", "/wda/pinch"], { scale, velocity });
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolRotate(args = {}) {
+  const rotation = Number(args.rotation);
+  const velocity = Number(args.velocity);
+  if (!Number.isFinite(rotation) || !Number.isFinite(velocity)) throw new Error("Provide numeric rotation and velocity.");
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/rotate", "/wda/rotate"], { rotation, velocity });
+  return jsonText({ ok: true, response: response.data });
+}
+
 async function toolHome(args = {}) {
   const response = await callWda(args, "POST", ["/wda/homescreen", "/session/:sessionId/wda/homescreen"]);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolKeyboardDismiss(args = {}) {
+  const body = args.keyNames ? { keyNames: String(args.keyNames).split(",").map((item) => item.trim()).filter(Boolean) } : {};
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/keyboard/dismiss", "/wda/keyboard/dismiss"], body);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolAlertAccept(args = {}) {
+  const response = await callWda(args, "POST", ["/session/:sessionId/alert/accept", "/alert/accept"], args.name ? { name: args.name } : {});
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolAlertDismiss(args = {}) {
+  const response = await callWda(args, "POST", ["/session/:sessionId/alert/dismiss", "/alert/dismiss"], args.name ? { name: args.name } : {});
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolAlertText(args = {}) {
+  const response = await callWda(args, "GET", ["/session/:sessionId/alert/text", "/alert/text"]);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolAlertInput(args = {}) {
+  if (typeof args.text !== "string") throw new Error("Provide text.");
+  const response = await callWda(args, "POST", ["/session/:sessionId/alert/text", "/alert/text"], { value: args.text });
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolAlertButtons(args = {}) {
+  const response = await callWda(args, "GET", ["/session/:sessionId/wda/alert/buttons", "/wda/alert/buttons"]);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDeviceLock(args = {}) {
+  const response = await callWda(args, "POST", ["/wda/lock", "/session/:sessionId/wda/lock"], {});
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDeviceUnlock(args = {}) {
+  const response = await callWda(args, "POST", ["/wda/unlock", "/session/:sessionId/wda/unlock"], {});
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDeviceLocked(args = {}) {
+  const response = await callWda(args, "GET", ["/wda/locked", "/session/:sessionId/wda/locked"]);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDeviceInfo(args = {}) {
+  const response = await callWda(args, "GET", ["/wda/device/info", "/session/:sessionId/wda/device/info"]);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDeviceBattery(args = {}) {
+  const response = await callWda(args, "GET", ["/session/:sessionId/wda/batteryInfo", "/wda/batteryInfo"]);
+  return jsonText({ ok: true, response: response.data });
+}
+
+async function toolDevicePress(args = {}) {
+  if (!args.name) throw new Error("Provide button name, for example volumeUp or volumeDown.");
+  const body = { name: args.name };
+  if (args.duration !== undefined) body.duration = Number(args.duration);
+  const response = await callWda(args, "POST", ["/session/:sessionId/wda/pressButton", "/wda/pressButton"], body);
   return jsonText({ ok: true, response: response.data });
 }
 
@@ -885,6 +1005,85 @@ export const tools = {
     },
     handler: toolSwipe,
   },
+  ivista_double_tap: {
+    description: "Double tap screen coordinates through WDA.",
+    inputSchema: {
+      type: "object",
+      required: ["x", "y"],
+      properties: {
+        x: { type: "number" },
+        y: { type: "number" },
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolDoubleTap,
+  },
+  ivista_two_finger_tap: {
+    description: "Perform a two-finger tap on the active app through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolTwoFingerTap,
+  },
+  ivista_long_press: {
+    description: "Long press screen coordinates through WDA.",
+    inputSchema: {
+      type: "object",
+      required: ["x", "y"],
+      properties: {
+        x: { type: "number" },
+        y: { type: "number" },
+        duration: { type: "number" },
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolLongPress,
+  },
+  ivista_drag: {
+    description: "Drag from one screen coordinate to another through WDA.",
+    inputSchema: {
+      type: "object",
+      required: ["fromX", "fromY", "toX", "toY"],
+      properties: {
+        fromX: { type: "number" },
+        fromY: { type: "number" },
+        toX: { type: "number" },
+        toY: { type: "number" },
+        duration: { type: "number" },
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolDrag,
+  },
+  ivista_pinch: {
+    description: "Pinch or zoom on the active app through WDA.",
+    inputSchema: {
+      type: "object",
+      required: ["scale", "velocity"],
+      properties: {
+        scale: { type: "number" },
+        velocity: { type: "number" },
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolPinch,
+  },
+  ivista_rotate: {
+    description: "Rotate gesture on the active app through WDA.",
+    inputSchema: {
+      type: "object",
+      required: ["rotation", "velocity"],
+      properties: {
+        rotation: { type: "number" },
+        velocity: { type: "number" },
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolRotate,
+  },
   ivista_home: {
     description: "Press the iOS Home button through WDA.",
     inputSchema: {
@@ -895,6 +1094,73 @@ export const tools = {
       },
     },
     handler: toolHome,
+  },
+  ivista_keyboard_dismiss: {
+    description: "Dismiss the iOS keyboard through WDA.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        keyNames: { type: "string" },
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolKeyboardDismiss,
+  },
+  ivista_alert_accept: {
+    description: "Accept the current iOS alert through WDA.",
+    inputSchema: { type: "object", properties: { name: { type: "string" }, baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolAlertAccept,
+  },
+  ivista_alert_dismiss: {
+    description: "Dismiss the current iOS alert through WDA.",
+    inputSchema: { type: "object", properties: { name: { type: "string" }, baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolAlertDismiss,
+  },
+  ivista_alert_text: {
+    description: "Read text from the current iOS alert through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolAlertText,
+  },
+  ivista_alert_input: {
+    description: "Type text into the current iOS alert through WDA.",
+    inputSchema: { type: "object", required: ["text"], properties: { text: { type: "string" }, baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolAlertInput,
+  },
+  ivista_alert_buttons: {
+    description: "Read button labels from the current iOS alert through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolAlertButtons,
+  },
+  ivista_device_lock: {
+    description: "Lock the iOS device through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolDeviceLock,
+  },
+  ivista_device_unlock: {
+    description: "Unlock the iOS device through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolDeviceUnlock,
+  },
+  ivista_device_locked: {
+    description: "Check whether the iOS device is locked through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolDeviceLocked,
+  },
+  ivista_device_info: {
+    description: "Read device information through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolDeviceInfo,
+  },
+  ivista_device_battery: {
+    description: "Read battery information through WDA.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolDeviceBattery,
+  },
+  ivista_device_press: {
+    description: "Press a supported hardware button through WDA, such as volumeUp or volumeDown.",
+    inputSchema: { type: "object", required: ["name"], properties: { name: { type: "string" }, duration: { type: "number" }, baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolDevicePress,
   },
   ivista_launch_app: {
     description: "Launch an app by bundle id through WDA.",
