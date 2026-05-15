@@ -8,8 +8,8 @@ import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_WDA_REPO = "https://github.com/appium/WebDriverAgent.git";
-const DEFAULT_WDA_REF = "v9.15.3";
+const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
+const DEFAULT_WDA_REF = "ivista-wda-v0.1.0";
 const DEFAULT_WDA_PORT = 8100;
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

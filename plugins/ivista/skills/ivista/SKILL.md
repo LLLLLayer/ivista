@@ -36,7 +36,7 @@ ivista doctor
 If `ivista` is missing, install it:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.19
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.20
 ```
 
 To update an existing install, run:
@@ -67,7 +67,7 @@ Prefer Simulator first unless the user explicitly asks for a real device.
 
 iVista manages WebDriverAgent by default. Users should not need to clone or download a WDA project manually.
 
-- Default WDA repo: `https://github.com/appium/WebDriverAgent.git`.
+- Default WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`.
 - Default cache: `~/.ivista/cache/webdriveragent/<ref>/`.
 - Override with `IVISTA_WDA_REPO`, `IVISTA_WDA_REF`, or `IVISTA_HOME`.
 - Use explicit `--wda-path` only for offline use, enterprise forks, or WDA debugging.

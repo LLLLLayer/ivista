@@ -7,7 +7,7 @@ This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, skills
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.19
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.20
 ivista doctor
 ```
 
@@ -82,8 +82,8 @@ Use `--auto-port` when port 8100 is already occupied or a previous WDA runner cr
 The CLI accepts these environment variables:
 
 - `IVISTA_HOME`: defaults to `~/.ivista`
-- `IVISTA_WDA_REPO`: defaults to `https://github.com/appium/WebDriverAgent.git`
-- `IVISTA_WDA_REF`: defaults to `v9.15.3`
+- `IVISTA_WDA_REPO`: defaults to `https://github.com/LLLLLayer/ivista-wda.git`
+- `IVISTA_WDA_REF`: defaults to `ivista-wda-v0.1.0`
 - `IVISTA_WDA_PORT`: defaults to `8100`
 - `IVISTA_WDA_BASE_URL`: overrides the WDA URL for direct connections
 

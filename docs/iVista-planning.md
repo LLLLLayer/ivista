@@ -192,7 +192,7 @@ ivista wda start --simulator "iPhone 16" --wda-path /path/to/WebDriverAgent
 Skill 默认流程：
 
 ```bash
-command -v ivista || npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.19
+command -v ivista || npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.20
 ivista update
 ivista doctor
 ivista simulator list
@@ -531,7 +531,7 @@ iVista 可以通过 URL scheme、localhost debug server、WebSocket 或私有 de
 WDA 依赖管理：
 
 - 默认使用 iVista 固定的 pinned WDA git ref。
-- 当前插件原型默认使用 Appium WebDriverAgent `v9.15.3`。
+- 当前插件原型默认使用 iVista WDA `ivista-wda-v0.1.0`。
 - 首次启动时自动下载到 `~/.ivista/cache/webdriveragent/<ref>/`。
 - 缓存 key 应包含 WDA ref、Xcode 版本和必要构建配置。
 - 提供 `ivista wda cache list/clear/update` 管理缓存。
