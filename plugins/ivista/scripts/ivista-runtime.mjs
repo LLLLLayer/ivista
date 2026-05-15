@@ -4,6 +4,7 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_WDA_REPO = "https://github.com/appium/WebDriverAgent.git";
@@ -104,30 +105,27 @@ function runCommand(command, args = [], options = {}) {
 }
 
 function createGitProgressRenderer(label) {
-  let lastPercent = -1;
+  let lastBucket = -1;
+  let lastStage = "";
   let lastText = "";
-  let frame = 0;
-  const frames = ["-", "\\", "|", "/"];
-  const clean = (line) => line
-    .replace(/^remote:\s*/, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  let rendered = false;
+  const writeLine = (text) => {
+    rendered = true;
+    lastText = text;
+    readline.clearLine(process.stderr, 0);
+    readline.cursorTo(process.stderr, 0);
+    process.stderr.write(text);
+  };
   const render = (stage, percent) => {
     const clamped = Math.max(0, Math.min(100, percent));
+    const bucket = clamped === 100 ? 100 : Math.floor(clamped / 5) * 5;
+    if (stage === lastStage && bucket === lastBucket) return;
+    lastStage = stage;
+    lastBucket = bucket;
     const width = 20;
-    const filled = Math.round((clamped / 100) * width);
+    const filled = Math.round((bucket / 100) * width);
     const bar = `${"#".repeat(filled)}${"-".repeat(width - filled)}`;
-    lastText = `${stage} [${bar}] ${String(clamped).padStart(3)}%`;
-    lastPercent = clamped;
-    process.stderr.write(`\r${label}: ${lastText}`.padEnd(100));
-  };
-  const renderText = (line) => {
-    const text = clean(line);
-    if (!text || text === lastText) return;
-    lastText = text;
-    const spinner = frames[frame % frames.length];
-    frame += 1;
-    process.stderr.write(`\r${label}: ${spinner} ${text}`.padEnd(100));
+    writeLine(`${label}: ${stage} [${bar}] ${String(bucket).padStart(3)}%`);
   };
   return {
     update(chunk) {
@@ -136,12 +134,11 @@ function createGitProgressRenderer(label) {
         const match = line.match(/(Enumerating objects|Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files):\s+(\d+)%/);
         if (match) {
           render(match[1], Number(match[2]));
-        } else {
-          renderText(line);
         }
       }
     },
     done() {
+      if (!rendered) writeLine(`${label}: done`);
       if (lastText) process.stderr.write("\n");
     },
   };
@@ -419,7 +416,7 @@ async function toolWdaPrepare(args = {}) {
   }
   if (!exists) {
     const progress = args.progress ? createGitProgressRenderer("Downloading WDA") : null;
-    if (args.progress) process.stderr.write(`Downloading WDA ${cfg.ref} from ${cfg.repo}\n`);
+    if (args.progress) process.stderr.write(`Downloading WDA ${cfg.ref}\n`);
     const clone = await runCommand("git", ["clone", "--progress", "--depth", "1", "--branch", cfg.ref, cfg.repo, cfg.cachePath], {
       timeoutMs: args.timeoutMs || 300000,
       onStderr: progress ? (chunk) => progress.update(chunk) : undefined,
