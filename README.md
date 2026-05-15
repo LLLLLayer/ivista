@@ -256,7 +256,8 @@ ivista/
 ├── src/
 │   └── ivista-runtime.mjs
 ├── docs/
-│   └── iVista-planning.md
+│   ├── iVista-planning.md
+│   └── open-source-usage.zh-CN.md
 ├── plugins/
 │   └── ivista/
 │       ├── .codex-plugin/
@@ -269,6 +270,7 @@ ivista/
 │   └── plugins/
 │       └── marketplace.json
 ├── package.json
+├── LICENSE
 ├── README.md
 └── README.zh-CN.md
 ```
@@ -283,4 +285,6 @@ ivista/
 
 ## License
 
-MIT
+iVista is released under the [MIT License](LICENSE).
+
+For open-source usage and third-party software notes, see [docs/open-source-usage.zh-CN.md](docs/open-source-usage.zh-CN.md).
