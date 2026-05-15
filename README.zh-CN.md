@@ -256,8 +256,7 @@ ivista/
 ├── src/
 │   └── ivista-runtime.mjs
 ├── docs/
-│   ├── iVista-planning.md
-│   └── open-source-usage.zh-CN.md
+│   └── iVista-planning.md
 ├── plugins/
 │   └── ivista/
 │       ├── .codex-plugin/
@@ -287,4 +286,16 @@ ivista/
 
 iVista 使用 [MIT License](LICENSE) 开源。
 
-开源软件使用和第三方软件说明见 [docs/open-source-usage.zh-CN.md](docs/open-source-usage.zh-CN.md)。
+## 开源软件使用说明
+
+iVista 主项目使用 MIT License。CLI 不会把 WebDriverAgent 打包进本仓库的 npm 包或 Codex Plugin bundle。
+
+iVista 默认在运行时下载固定版本的 WDA fork：
+
+- WDA repo：`https://github.com/LLLLLayer/ivista-wda.git`
+- WDA ref：`ivista-wda-v0.1.0`
+- 缓存目录：`~/.ivista/cache/webdriveragent/<ref>/`
+
+WDA fork 是独立的开源项目，有自己的许可证和第三方声明。如果你分发定制过的 WDA 源码或二进制产物，需要保留 WDA 仓库中的 license 和 vendor notices。
+
+iVista 还会调用用户本机工具，例如 Xcode、`xcodebuild`、`xcrun simctl`、Git、Node.js 和 npm。这些工具不随 iVista 分发，仍受各自许可证约束。

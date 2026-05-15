@@ -256,8 +256,7 @@ ivista/
 ├── src/
 │   └── ivista-runtime.mjs
 ├── docs/
-│   ├── iVista-planning.md
-│   └── open-source-usage.zh-CN.md
+│   └── iVista-planning.md
 ├── plugins/
 │   └── ivista/
 │       ├── .codex-plugin/
@@ -287,4 +286,16 @@ ivista/
 
 iVista is released under the [MIT License](LICENSE).
 
-For open-source usage and third-party software notes, see [docs/open-source-usage.zh-CN.md](docs/open-source-usage.zh-CN.md).
+## Open Source Software Usage
+
+iVista itself is licensed under MIT. The CLI does not vendor WebDriverAgent into this repository's npm package or Codex plugin bundle.
+
+By default, iVista downloads a pinned WDA fork at runtime:
+
+- WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
+- WDA ref: `ivista-wda-v0.1.0`
+- Cache path: `~/.ivista/cache/webdriveragent/<ref>/`
+
+The WDA fork is an independent open-source project with its own license and third-party notices. If you distribute a customized WDA source tree or binary, keep the license and vendor notices from the WDA repository.
+
+iVista also calls local tools such as Xcode, `xcodebuild`, `xcrun simctl`, Git, Node.js, and npm. These tools are not distributed with iVista and remain governed by their own licenses.
