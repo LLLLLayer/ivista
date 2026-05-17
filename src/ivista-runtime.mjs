@@ -9,7 +9,7 @@ import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
-const DEFAULT_WDA_REF = "ivista-wda-v0.1.0";
+const DEFAULT_WDA_REF = "ivista-wda-v0.1.1";
 const DEFAULT_WDA_PORT = 8100;
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -99,6 +99,36 @@ function removeSessionFile(file) {
   } catch {
     // Ignore stale session cleanup errors.
   }
+}
+
+function removeSession(targetId = "default") {
+  removeSessionFile(sessionFile(targetId));
+}
+
+function sessionFileTargetId(file) {
+  return path.basename(file, ".json");
+}
+
+function resolveSessionTargetId(args = {}, baseUrl = wdaBaseUrl(args)) {
+  if (args.targetId) return args.targetId;
+  if (args.simulator) return args.simulator;
+  if (args.udid) return args.udid;
+  if (args.name) return args.name;
+
+  const wantedPort = sessionPort({ baseUrl });
+  const matches = listSessions().filter(({ data }) => {
+    if (wantedPort && sessionPort(data) !== wantedPort) return false;
+    return data.baseUrl === baseUrl || data.port === wantedPort || data.targetType === "simulator";
+  });
+  if (matches.length === 1) {
+    const { file, data } = matches[0];
+    return data.simulator?.udid || data.simulator?.name || sessionFileTargetId(file);
+  }
+
+  const simulatorMatch = matches.find(({ data }) => data.targetType === "simulator" && data.simulator?.udid);
+  if (simulatorMatch) return simulatorMatch.data.simulator.udid;
+
+  return "default";
 }
 
 function isPortAvailable(port) {
@@ -316,11 +346,18 @@ function extractSessionId(data) {
   );
 }
 
+function isInvalidSessionResponse(response) {
+  const value = response?.data?.value || {};
+  const error = String(value.error || response?.data?.error || "").toLowerCase();
+  const message = String(value.message || response?.data?.message || "").toLowerCase();
+  return response?.statusCode === 404 && (error.includes("invalid session") || message.includes("session does not exist"));
+}
+
 async function ensureWdaSession(args = {}) {
-  const targetId = args.targetId || args.simulator || args.udid || "default";
-  const saved = readSession(targetId);
-  if (saved.sessionId) return saved.sessionId;
   const baseUrl = wdaBaseUrl(args);
+  const targetId = resolveSessionTargetId(args, baseUrl);
+  const saved = readSession(targetId);
+  if (saved.sessionId && !args.forceNewSession) return { targetId, sessionId: saved.sessionId };
   const response = await httpJson("POST", `${baseUrl}/session`, {
     capabilities: { alwaysMatch: {} },
     desiredCapabilities: {},
@@ -330,26 +367,33 @@ async function ensureWdaSession(args = {}) {
     throw new Error(`Unable to create WDA session: ${JSON.stringify(response.data)}`);
   }
   writeSession(targetId, { ...saved, baseUrl, sessionId, updatedAt: new Date().toISOString() });
-  return sessionId;
+  return { targetId, sessionId };
 }
 
 async function callWda(args, method, paths, body) {
   const baseUrl = wdaBaseUrl(args);
-  const sessionId = paths.some((item) => item.includes(":sessionId"))
-    ? await ensureWdaSession(args)
-    : null;
+  const needsSession = paths.some((item) => item.includes(":sessionId"));
+  let session = needsSession ? await ensureWdaSession(args) : null;
   const errors = [];
-  for (const template of paths) {
-    const route = template.replace(":sessionId", sessionId);
-    try {
-      const response = await httpJson(method, `${baseUrl}${route}`, body, args.timeoutMs || 10000);
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return response;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let sawInvalidSession = false;
+    for (const template of paths) {
+      const route = template.replace(":sessionId", session?.sessionId || "");
+      try {
+        const response = await httpJson(method, `${baseUrl}${route}`, body, args.timeoutMs || 10000);
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response;
+        }
+        sawInvalidSession ||= needsSession && isInvalidSessionResponse(response);
+        errors.push({ route, statusCode: response.statusCode, data: response.data });
+      } catch (error) {
+        errors.push({ route, error: error.message });
       }
-      errors.push({ route, statusCode: response.statusCode, data: response.data });
-    } catch (error) {
-      errors.push({ route, error: error.message });
     }
+    if (!sawInvalidSession || !needsSession || attempt > 0) break;
+    removeSession(session.targetId);
+    session = await ensureWdaSession({ ...args, forceNewSession: true, targetId: session.targetId });
+    errors.push({ route: "/session", recovered: "stale WDA session was recreated" });
   }
   throw new Error(`All WDA routes failed: ${JSON.stringify(errors, null, 2)}`);
 }

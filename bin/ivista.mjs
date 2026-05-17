@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "../src/ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.20";
+const CLI_VERSION = "0.1.21";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -53,7 +53,7 @@ Usage:
   ivista simulator boot
   ivista simulator boot 1
   ivista simulator boot --name "iPhone 16"
-  ivista wda prepare [--ref ivista-wda-v0.1.0]
+  ivista wda prepare [--ref ivista-wda-v0.1.1]
   ivista wda start --simulator "iPhone 16" [--port 8100]
   ivista wda start --simulator "iPhone 16" --auto-port
   ivista wda stop [--port 8100]
@@ -106,7 +106,7 @@ Options:
   --key-names <names>     Comma-separated keyboard dismissal key names.
   --wda-path <path>       Use an explicit WDA project path.
   --repo <url>            WDA git repository.
-  --ref <ref>             WDA git ref. Defaults to ivista-wda-v0.1.0.
+  --ref <ref>             WDA git ref. Defaults to ivista-wda-v0.1.1.
   --timeout <ms>          Command timeout in milliseconds.
   --wait <ms>             WDA startup wait timeout in milliseconds.
 `);
