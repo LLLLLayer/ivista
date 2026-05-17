@@ -15,7 +15,7 @@ iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 W
 - 启动、停止和检查 WebDriverAgent。
 - 通过宿主 iOS App 项目复用签名信息，使用 USB 或 CoreDevice 无线 tunnel 启动真机 WDA。
 - 获取截图和 accessibility/source 树。
-- 执行确定性的 WDA 动作：点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、收起键盘、处理弹窗、读取设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
+- 执行确定性的 WDA 动作：坐标或 accessibility 文本点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、收起键盘、处理弹窗、读取设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
 - 提供 skill-only Codex Plugin，让 Agent 学会安装并调用同一个 `ivista` CLI。
 
 当前实现支持 Simulator 工作流，也已经验证 USB 和 CoreDevice 无线真机 WDA 路径。报告、Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
@@ -118,12 +118,18 @@ ivista wda status [--port 8100]
 
 ivista screen shot [--port 8100] [--output /tmp/ivista.png]
 ivista screen source [--port 8100]
+ivista screen texts [--port 8100]
+ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
 
 ivista act home [--port 8100]
 ivista act tap --x 120 --y 500
+ivista act tap --text "Wi-Fi"
+ivista act tap --contains "语言"
 ivista act double-tap --x 120 --y 500
+ivista act double-tap --text "照片"
 ivista act two-finger-tap
 ivista act long-press --x 120 --y 500 [--duration 1]
+ivista act long-press --text "App" [--duration 1]
 ivista act drag --from-x 100 --from-y 600 --to-x 300 --to-y 200 [--duration 0.5]
 ivista act pinch --scale 0.5 --velocity -1
 ivista act rotate --rotation 1.57 --velocity 1
@@ -163,6 +169,7 @@ ivista app terminate --bundle-id com.example.app
 - `--workspace`、`--ios-project`、`--scheme`、`--signing-team` 和 `--wda-bundle-id`：真机 WDA 签名参数。
 - `--network` 和 `--usb`：强制真机传输模式。默认情况下，如果 `devicectl` 返回 `transportType=localNetwork`，iVista 会使用 CoreDevice tunnel。
 - `--output <path>`：保存输出文件，目前用于截图。
+- `--text <text>`、`--contains <text>`、`--regex <pattern>` 和 `--index <n>`：按 Accessibility 的 `name`、`label` 或 `value` 匹配元素，用于语义操作。
 - `--duration <seconds>`：手势持续时间。
 - `--scale <number>` 和 `--velocity <number>`：缩放手势参数。
 - `--rotation <radians>`：旋转手势角度。

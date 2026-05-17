@@ -10,6 +10,8 @@ export const commandMap = new Map([
   ["wda status", "ivista_wda_status"],
   ["screen shot", "ivista_screenshot"],
   ["screen source", "ivista_source"],
+  ["screen texts", "ivista_screen_texts"],
+  ["wait text", "ivista_wait_text"],
   ["act home", "ivista_home"],
   ["act tap", "ivista_tap"],
   ["act double-tap", "ivista_double_tap"],

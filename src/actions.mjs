@@ -3,6 +3,18 @@ import path from "node:path";
 
 import { ensureDir, expandHome, jsonText } from "./core.mjs";
 import { callWda } from "./sessions.mjs";
+import {
+  candidateSummary,
+  clickWdaElement,
+  elementNotFoundPayload,
+  findWdaElementIds,
+  hasTextSelector,
+  indexFromArgs,
+  readSourceMatches,
+  resolveTextSelector,
+  screenTexts,
+  waitForText,
+} from "./accessibility.mjs";
 
 export async function toolScreenshot(args = {}) {
   const response = await callWda(args, "GET", ["/screenshot", "/session/:sessionId/screenshot"]);
@@ -22,12 +34,112 @@ export async function toolSource(args = {}) {
   return jsonText({ ok: true, response: response.data });
 }
 
+export async function toolScreenTexts(args = {}) {
+  return await screenTexts(args);
+}
+
 export async function toolTap(args = {}) {
+  if (hasTextSelector(args)) return await toolTapText(args);
   const x = Number(args.x);
   const y = Number(args.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Provide numeric x and y.");
   const response = await callWda(args, "POST", ["/session/:sessionId/wda/tap", "/wda/tap"], { x, y });
   return jsonText({ ok: true, response: response.data });
+}
+
+async function coordinateTap(args, point) {
+  return await callWda(args, "POST", ["/session/:sessionId/wda/tap", "/wda/tap"], point);
+}
+
+async function coordinateDoubleTap(args, point) {
+  return await callWda(args, "POST", ["/session/:sessionId/wda/doubleTap", "/wda/doubleTap"], point);
+}
+
+async function coordinateLongPress(args, point) {
+  const duration = Number(args.duration || 1);
+  if (!Number.isFinite(duration)) throw new Error("Provide numeric duration.");
+  return await callWda(args, "POST", ["/session/:sessionId/wda/touchAndHold", "/wda/touchAndHold"], {
+    ...point,
+    duration,
+  });
+}
+
+async function sourcePointForText(args, selector) {
+  const selectedIndex = indexFromArgs(args);
+  const { matches } = await readSourceMatches(args, selector);
+  const candidate = matches[selectedIndex - 1];
+  if (!candidate) return { ok: false, matches };
+  if (!candidate.center) {
+    return {
+      ok: false,
+      matches,
+      error: `Matched ${selector.mode} "${selector.text}", but the element has no usable rect.`,
+    };
+  }
+  return { ok: true, candidate, matches, point: candidate.center };
+}
+
+async function textCoordinateGesture(args, gestureName, invoke) {
+  const selector = resolveTextSelector(args);
+  const target = await sourcePointForText(args, selector);
+  if (!target.ok) {
+    const payload = JSON.parse(elementNotFoundPayload(selector, target.matches || []).content[0].text);
+    if (target.error) payload.error = target.error;
+    return jsonText(payload);
+  }
+  const response = await invoke(args, target.point);
+  return jsonText({
+    ok: true,
+    gesture: gestureName,
+    selector,
+    point: target.point,
+    match: candidateSummary(target.candidate, indexFromArgs(args) - 1),
+    response: response.data,
+  });
+}
+
+export async function toolTapText(args = {}) {
+  const selector = resolveTextSelector(args);
+  const selectedIndex = indexFromArgs(args);
+  let elementLookupError = null;
+  let elementIds = [];
+  try {
+    elementIds = await findWdaElementIds(args, selector);
+  } catch (error) {
+    elementLookupError = error.message;
+  }
+  const id = elementIds[selectedIndex - 1];
+  if (id) {
+    try {
+      const response = await clickWdaElement(args, id);
+      return jsonText({
+        ok: true,
+        gesture: "tap",
+        method: "element-click",
+        selector,
+        index: selectedIndex,
+        response: response.data,
+      });
+    } catch {
+      // Fall back to the source rect center below; element click can be flaky on some WDA builds.
+    }
+  }
+  const target = await sourcePointForText(args, selector);
+  if (!target.ok) {
+    const payload = JSON.parse(elementNotFoundPayload(selector, target.matches || []).content[0].text);
+    if (elementLookupError) payload.elementLookupError = elementLookupError;
+    return jsonText(payload);
+  }
+  const response = await coordinateTap(args, target.point);
+  return jsonText({
+    ok: true,
+    gesture: "tap",
+    method: "rect-center",
+    selector,
+    point: target.point,
+    match: candidateSummary(target.candidate, selectedIndex - 1),
+    response: response.data,
+  });
 }
 
 export function coordinateBody(args = {}) {
@@ -76,7 +188,8 @@ export async function toolSwipe(args = {}) {
 }
 
 export async function toolDoubleTap(args = {}) {
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/doubleTap", "/wda/doubleTap"], coordinateBody(args));
+  if (hasTextSelector(args)) return await textCoordinateGesture(args, "double-tap", coordinateDoubleTap);
+  const response = await coordinateDoubleTap(args, coordinateBody(args));
   return jsonText({ ok: true, response: response.data });
 }
 
@@ -86,13 +199,15 @@ export async function toolTwoFingerTap(args = {}) {
 }
 
 export async function toolLongPress(args = {}) {
+  if (hasTextSelector(args)) return await textCoordinateGesture(args, "long-press", coordinateLongPress);
   const duration = Number(args.duration || 1);
   if (!Number.isFinite(duration)) throw new Error("Provide numeric duration.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/touchAndHold", "/wda/touchAndHold"], {
-    ...coordinateBody(args),
-    duration,
-  });
+  const response = await coordinateLongPress(args, coordinateBody(args));
   return jsonText({ ok: true, response: response.data });
+}
+
+export async function toolWaitText(args = {}) {
+  return await waitForText(args);
 }
 
 export async function toolDrag(args = {}) {

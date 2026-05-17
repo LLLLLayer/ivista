@@ -21,11 +21,17 @@ Usage:
   ivista wda status [--port 8100]
   ivista screen shot [--port 8100] [--output /tmp/ivista.png]
   ivista screen source [--port 8100]
+  ivista screen texts [--port 8100]
+  ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
   ivista act home [--port 8100]
   ivista act tap --x 120 --y 500
+  ivista act tap --text "Wi-Fi"
+  ivista act tap --contains "语言" [--index 1]
   ivista act double-tap --x 120 --y 500
+  ivista act double-tap --text "照片"
   ivista act two-finger-tap
   ivista act long-press --x 120 --y 500 [--duration 1]
+  ivista act long-press --text "App" [--duration 1]
   ivista act drag --from-x 100 --from-y 600 --to-x 300 --to-y 200 [--duration 0.5]
   ivista act pinch --scale 0.5 --velocity -1
   ivista act rotate --rotation 1.57 --velocity 1
@@ -62,6 +68,10 @@ Options:
   --base-url <url>        WDA base URL.
   --port <port>           WDA port. Defaults to 8100.
   --output <path>         Output path for commands that save files.
+  --text <text>           Match an accessibility name, label, or value exactly.
+  --contains <text>       Match accessibility text partially.
+  --regex <pattern>       Match accessibility text with a regular expression.
+  --index <n>             Use the nth matched accessibility element. Defaults to 1.
   --duration <seconds>    Gesture duration in seconds.
   --scale <number>        Pinch scale. Values under 1 zoom out; over 1 zoom in.
   --velocity <number>     Gesture velocity.

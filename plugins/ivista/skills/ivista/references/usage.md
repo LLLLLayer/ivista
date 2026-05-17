@@ -28,24 +28,32 @@ Always observe before acting.
 ```bash
 ivista screen shot --port <port> --output /tmp/ivista.png
 ivista screen source --port <port>
+ivista screen texts --port <port>
 ```
 
-Use screenshots for visual state. Use source for stable text, labels, coordinates, and accessibility structure.
+Use screenshots for visual state. Use `screen texts` before semantic actions, and use source for deeper labels, coordinates, and accessibility structure.
 
 ## Common Actions
 
 ```bash
 ivista act home --port <port>
 ivista act tap --port <port> --x 120 --y 500
+ivista act tap --port <port> --text "Wi-Fi"
+ivista act tap --port <port> --contains "Language"
 ivista act double-tap --port <port> --x 120 --y 500
+ivista act double-tap --port <port> --text "Photos"
 ivista act two-finger-tap --port <port>
 ivista act long-press --port <port> --x 120 --y 500 --duration 1
+ivista act long-press --port <port> --text "App" --duration 1
 ivista act drag --port <port> --from-x 100 --from-y 600 --to-x 300 --to-y 200 --duration 0.5
 ivista act pinch --port <port> --scale 0.5 --velocity -1
 ivista act rotate --port <port> --rotation 1.57 --velocity 1
 ivista act input "hello" --port <port>
 ivista act swipe --port <port> --direction up
+ivista wait text "Done" --port <port> --timeout 10000
 ```
+
+Prefer `--text`, `--contains`, or `--regex` when the target appears in Accessibility. Use coordinates when the app is a game, canvas, custom-rendered screen, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
 
 ## Keyboard, Alerts, Device
 

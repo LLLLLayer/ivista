@@ -15,7 +15,7 @@ In one sentence: iVista turns an iOS Simulator or connected iPhone into an agent
 - Start, stop, and check WebDriverAgent.
 - Start real-device WDA over USB or a CoreDevice wireless tunnel by reusing signing settings from a host iOS app project.
 - Capture screenshots and accessibility/source trees.
-- Run deterministic WDA actions: tap, double tap, two-finger tap, long press, drag, pinch, rotate, type, swipe, Home, keyboard dismiss, alerts, device info, device lock/unlock, hardware button press, app launch, and app termination.
+- Run deterministic WDA actions: coordinate or accessibility-text tap, double tap, two-finger tap, long press, drag, pinch, rotate, type, swipe, Home, keyboard dismiss, alerts, device info, device lock/unlock, hardware button press, app launch, and app termination.
 - Provide a skill-only Codex plugin that teaches agents how to install and call the same `ivista` CLI.
 
 The current implementation supports Simulator workflows plus verified USB and CoreDevice wireless real-device WDA paths. Richer reports, recipes, and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
@@ -118,12 +118,18 @@ ivista wda status [--port 8100]
 
 ivista screen shot [--port 8100] [--output /tmp/ivista.png]
 ivista screen source [--port 8100]
+ivista screen texts [--port 8100]
+ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
 
 ivista act home [--port 8100]
 ivista act tap --x 120 --y 500
+ivista act tap --text "Wi-Fi"
+ivista act tap --contains "Language"
 ivista act double-tap --x 120 --y 500
+ivista act double-tap --text "Photos"
 ivista act two-finger-tap
 ivista act long-press --x 120 --y 500 [--duration 1]
+ivista act long-press --text "App" [--duration 1]
 ivista act drag --from-x 100 --from-y 600 --to-x 300 --to-y 200 [--duration 0.5]
 ivista act pinch --scale 0.5 --velocity -1
 ivista act rotate --rotation 1.57 --velocity 1
@@ -163,6 +169,7 @@ Useful options:
 - `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, and `--wda-bundle-id`: real-device WDA signing inputs.
 - `--network` and `--usb`: force the real-device transport mode. By default iVista uses the CoreDevice tunnel when `devicectl` reports `transportType=localNetwork`.
 - `--output <path>`: save command output, currently used by screenshots.
+- `--text <text>`, `--contains <text>`, `--regex <pattern>`, and `--index <n>`: match Accessibility `name`, `label`, or `value` for semantic actions.
 - `--duration <seconds>`: gesture duration.
 - `--scale <number>` and `--velocity <number>`: pinch parameters.
 - `--rotation <radians>`: rotate gesture amount.

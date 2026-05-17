@@ -204,13 +204,15 @@ ivista wda status [--port 8100]
 ```bash
 ivista screen shot [--port 8100] [--output /tmp/ivista.png] [--json]
 ivista screen source [--port 8100] [--json]
+ivista screen texts [--port 8100] [--json]
+ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
 ```
 
 用途：
 
 - 给 Agent 看当前屏幕。
 - 给调试报告保存现场。
-- 结合 source 做更稳定的元素定位。
+- 结合 source/accessibility texts 做更稳定的元素定位和等待。
 
 ### 3.5 操作能力
 
@@ -219,9 +221,13 @@ ivista screen source [--port 8100] [--json]
 ```bash
 ivista act home
 ivista act tap --x 120 --y 500
+ivista act tap --text "Wi-Fi"
+ivista act tap --contains "语言" [--index 1]
 ivista act double-tap --x 120 --y 500
-ivista act two-finger-tap --x 120 --y 500
+ivista act double-tap --text "照片"
+ivista act two-finger-tap
 ivista act long-press --x 120 --y 500 [--duration 1.5]
+ivista act long-press --text "App" [--duration 1.5]
 ivista act drag --from-x 100 --from-y 600 --to-x 100 --to-y 200 [--duration 1]
 ivista act pinch --scale 2 --velocity 1
 ivista act rotate --rotation 1.57 --velocity 1
@@ -519,6 +525,8 @@ ivista wda status --json
 ivista app launch --bundle-id com.example.app
 ivista screen shot --json
 ivista screen source --json
+ivista screen texts --json
+ivista wait text "Done"
 ivista act tap/input/swipe
 ```
 

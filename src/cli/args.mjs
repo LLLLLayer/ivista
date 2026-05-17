@@ -51,6 +51,7 @@ const numericOptions = [
   "scale",
   "velocity",
   "rotation",
+  "index",
 ];
 
 export function parseArgs(argv) {
@@ -100,6 +101,13 @@ export function normalizeOptions(options, positionals) {
   }
   if (positionals[0] === "alert" && positionals[1] === "input" && typeof out.text !== "string") {
     out.text = positionals.slice(2).join(" ");
+  }
+  if (positionals[0] === "wait" && positionals[1] === "text" && typeof out.text !== "string" && typeof out.contains !== "string" && typeof out.regex !== "string") {
+    out.text = positionals.slice(2).join(" ");
+  }
+  if (positionals[0] === "act" && ["tap", "double-tap", "long-press"].includes(positionals[1]) && typeof out.text !== "string" && typeof out.contains !== "string" && typeof out.regex !== "string") {
+    const text = positionals.slice(2).join(" ");
+    if (text) out.text = text;
   }
   if (positionals[0] === "simulator" && positionals[1] === "boot" && positionals[2] && !out.simulator && !out.name && !out.udid) {
     out.simulator = positionals[2];

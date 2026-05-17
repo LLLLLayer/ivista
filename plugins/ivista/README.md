@@ -36,6 +36,8 @@ ivista doctor
 - `ivista wda status`
 - `ivista screen shot`
 - `ivista screen source`
+- `ivista screen texts`
+- `ivista wait text`
 - `ivista act home`
 - `ivista act tap`
 - `ivista act double-tap`

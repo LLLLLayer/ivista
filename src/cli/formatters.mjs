@@ -210,10 +210,27 @@ function printWdaStatus(payload) {
   if (payload.baseUrl) console.log(`url: ${payload.baseUrl}`);
 }
 
+function printCandidates(payload) {
+  for (const item of (payload.candidates || payload.matches || []).slice(0, 8)) {
+    if (item.summary) {
+      console.log(`  ${item.summary}`);
+      continue;
+    }
+    const rect = item.rect ? `x=${item.rect.x} y=${item.rect.y} w=${item.rect.width} h=${item.rect.height}` : "no rect";
+    console.log(`  ${item.index}. ${item.type} ${item.field || "text"}="${item.text || ""}" ${rect}`);
+  }
+}
+
 function printGeneric(commandKey, payload) {
   if (payload.ok === false) {
     console.log(`${commandKey} failed.`);
     if (payload.error) console.log(`error: ${payload.error}`);
+    if (payload.candidates?.length || payload.matches?.length) {
+      console.log("");
+      console.log("Candidates:");
+      printCandidates(payload);
+    }
+    for (const hint of payload.hints || []) console.log(`hint: ${hint}`);
     return;
   }
   if (commandKey === "screen shot") {
@@ -227,6 +244,26 @@ function printGeneric(commandKey, payload) {
     const value = payload.response?.value;
     console.log("Source captured.");
     if (typeof value === "string") console.log(`chars: ${value.length}`);
+    return;
+  }
+  if (commandKey === "screen texts") {
+    console.log("Visible accessibility texts:");
+    for (const text of payload.texts || []) console.log(`- ${text}`);
+    console.log("");
+    console.log(`elements: ${(payload.elements || []).length}`);
+    return;
+  }
+  if (commandKey === "wait text") {
+    console.log("Text appeared.");
+    if (payload.match?.summary) console.log(payload.match.summary);
+    if (payload.elapsedMs !== undefined) console.log(`elapsed: ${payload.elapsedMs}ms`);
+    return;
+  }
+  if (["act tap", "act double-tap", "act long-press"].includes(commandKey) && payload.selector) {
+    console.log(`${commandKey} ok.`);
+    if (payload.method) console.log(`method: ${payload.method}`);
+    if (payload.match?.summary) console.log(`match: ${payload.match.summary}`);
+    if (payload.point) console.log(`point: x=${payload.point.x} y=${payload.point.y}`);
     return;
   }
   if (["alert text", "alert buttons", "device locked", "device info", "device battery"].includes(commandKey)) {

@@ -28,13 +28,23 @@ import {
   toolLongPress,
   toolPinch,
   toolRotate,
+  toolScreenTexts,
   toolScreenshot,
   toolSource,
   toolSwipe,
   toolTap,
   toolTerminateApp,
   toolTwoFingerTap,
+  toolWaitText,
 } from "./actions.mjs";
+
+const semanticElementProperties = {
+  text: { type: "string" },
+  contains: { type: ["string", "boolean"] },
+  regex: { type: ["string", "boolean"] },
+  index: { type: "number" },
+  timeoutMs: { type: "number" },
+};
 
 export const tools = {
   ivista_doctor: {
@@ -183,14 +193,31 @@ export const tools = {
     inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
     handler: toolSource,
   },
-  ivista_tap: {
-    description: "Tap screen coordinates through WDA.",
+  ivista_screen_texts: {
+    description: "Read visible accessibility texts from the current WDA source tree.",
+    inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
+    handler: toolScreenTexts,
+  },
+  ivista_wait_text: {
+    description: "Wait until accessibility text appears in the current WDA source tree.",
     inputSchema: {
       type: "object",
-      required: ["x", "y"],
+      properties: {
+        ...semanticElementProperties,
+        baseUrl: { type: "string" },
+        port: { type: "number" },
+      },
+    },
+    handler: toolWaitText,
+  },
+  ivista_tap: {
+    description: "Tap screen coordinates or an accessibility text match through WDA.",
+    inputSchema: {
+      type: "object",
       properties: {
         x: { type: "number" },
         y: { type: "number" },
+        ...semanticElementProperties,
         baseUrl: { type: "string" },
         port: { type: "number" },
       },
@@ -230,13 +257,13 @@ export const tools = {
     handler: toolSwipe,
   },
   ivista_double_tap: {
-    description: "Double tap screen coordinates through WDA.",
+    description: "Double tap screen coordinates or an accessibility text match through WDA.",
     inputSchema: {
       type: "object",
-      required: ["x", "y"],
       properties: {
         x: { type: "number" },
         y: { type: "number" },
+        ...semanticElementProperties,
         baseUrl: { type: "string" },
         port: { type: "number" },
       },
@@ -249,14 +276,14 @@ export const tools = {
     handler: toolTwoFingerTap,
   },
   ivista_long_press: {
-    description: "Long press screen coordinates through WDA.",
+    description: "Long press screen coordinates or an accessibility text match through WDA.",
     inputSchema: {
       type: "object",
-      required: ["x", "y"],
       properties: {
         x: { type: "number" },
         y: { type: "number" },
         duration: { type: "number" },
+        ...semanticElementProperties,
         baseUrl: { type: "string" },
         port: { type: "number" },
       },
