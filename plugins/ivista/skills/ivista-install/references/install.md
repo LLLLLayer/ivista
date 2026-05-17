@@ -1,6 +1,6 @@
 # iVista Installation
 
-Use this reference when the user asks to install, update, verify, diagnose, or repair the `ivista` CLI.
+Use this reference when the user asks to install, update, verify, diagnose, or repair the `ivista` CLI and its Simulator or real-device environment.
 
 ## Core Facts
 
@@ -25,7 +25,7 @@ If `ivista doctor` reports issues, prefer following its fix hints before attempt
 Install the released CLI from the GitHub npm package source:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.23
 ```
 
 For local development from a checked-out repo:
@@ -46,13 +46,29 @@ To update from a specific branch or ref:
 ivista update --ref main
 ```
 
-## Verify After Install
+## Verify CLI
 
 ```bash
 ivista version
 ivista doctor
+```
+
+## Simulator Setup
+
+Use this when the user wants Simulator support. Do not make the user manually open Xcode unless the CLI check fails.
+
+```bash
 ivista simulator list
 ```
+
+If no Simulators are available, explain that they need an iOS Simulator runtime installed in Xcode. The usual manual path is Xcode Settings > Platforms, then install an iOS runtime. After that rerun:
+
+```bash
+ivista simulator list
+ivista simulator boot
+```
+
+`ivista simulator boot` provides an interactive picker. A booted Simulator means the Simulator is already running and can be used by WDA.
 
 If the user wants to validate the WDA cache without launching a Simulator:
 
@@ -61,6 +77,43 @@ ivista wda cache status
 ivista wda prepare
 ivista wda cache status
 ```
+
+## Real Device Setup
+
+Use this when the user explicitly wants a real iPhone or iPad.
+
+Check device visibility:
+
+```bash
+ivista device list --connected
+```
+
+Check the port forwarding dependency:
+
+```bash
+command -v iproxy
+```
+
+If `iproxy` is missing:
+
+```bash
+brew install libimobiledevice
+```
+
+Real-device prerequisites:
+
+- Device is connected, unlocked, paired/trusted with this Mac, and Developer Mode is enabled.
+- Xcode can build a normal iOS app to that device.
+- The user is usually inside an iOS app project, so the agent should find signing inputs from the project instead of asking the user to copy settings manually.
+
+When preparing real-device WDA, the agent should find:
+
+- `.xcworkspace` or `.xcodeproj`
+- app scheme
+- `DEVELOPMENT_TEAM`
+- `PRODUCT_BUNDLE_IDENTIFIER`
+
+Do not copy the host app provisioning profile directly to WDA. WDA needs its own bundle id; derive one as `<host bundle id>.ivista.wda` unless the user provides a bundle id.
 
 ## WDA Cache
 
@@ -82,8 +135,10 @@ Explain that `rm -rf` recursively deletes the target path without prompting, so 
 
 ## Common Repair Hints
 
-- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22`.
+- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.23`.
 - Old version: run `ivista update`.
 - Xcode tools missing: install or select Xcode, then rerun `ivista doctor`.
+- Real device missing: unlock the device, trust this Mac, enable Developer Mode, reconnect USB, then run `ivista device list --connected`.
+- `iproxy` missing: install libimobiledevice/usbmuxd, for example `brew install libimobiledevice`.
 - WDA port busy: use `ivista wda start --auto-port` or stop the old runner with `ivista wda stop --port <port>`.
 - Stale WDA session: rerun the failed command; current CLI should recreate invalid sessions automatically.

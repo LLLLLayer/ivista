@@ -2,13 +2,14 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "../src/ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.22";
+const CLI_VERSION = "0.1.23";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
   ["doctor", "ivista_doctor"],
   ["simulator list", "ivista_simulator_list"],
   ["simulator boot", "ivista_simulator_boot"],
+  ["device list", "ivista_device_list"],
   ["wda cache status", "ivista_wda_cache_status"],
   ["wda prepare", "ivista_wda_prepare"],
   ["wda start", "ivista_wda_start_simulator"],
@@ -53,10 +54,12 @@ Usage:
   ivista simulator boot
   ivista simulator boot 1
   ivista simulator boot --name "iPhone 16"
+  ivista device list [--connected] [--json]
   ivista wda prepare [--ref ivista-wda-v0.1.1]
   ivista wda start [--port 8100]
   ivista wda start --simulator "iPhone 16" [--port 8100]
   ivista wda start --simulator "iPhone 16" --auto-port
+  ivista wda start --device <device-udid> --ios-project MyApp.xcodeproj --scheme MyApp
   ivista wda stop [--port 8100]
   ivista wda status [--port 8100]
   ivista screen shot [--port 8100] [--output /tmp/ivista.png]
@@ -93,7 +96,9 @@ Options:
   --iphone                Show only iPhone Simulators.
   --ipad                  Show only iPad Simulators.
   --auto-port             Find an available WDA port automatically.
+  --connected             Show only connected physical iOS devices.
   --simulator <name|udid> Simulator name or UDID.
+  --device <name|udid>    Physical iOS device name or UDID.
   --name <name>           Simulator name.
   --udid <udid>           Device or Simulator UDID.
   --bundle-id <id>        App bundle id.
@@ -106,6 +111,12 @@ Options:
   --rotation <radians>    Rotation gesture amount in radians.
   --key-names <names>     Comma-separated keyboard dismissal key names.
   --wda-path <path>       Use an explicit WDA project path.
+  --ios-project <path>    Host iOS .xcodeproj used to infer signing.
+  --workspace <path>      Host iOS .xcworkspace used to infer signing.
+  --scheme <name>         Host iOS scheme used to infer signing.
+  --configuration <name>  Host iOS build configuration. Defaults to Debug.
+  --signing-team <id>     Apple development team id for WDA signing.
+  --wda-bundle-id <id>    Bundle id to use for WDA on a real device.
   --repo <url>            WDA git repository.
   --ref <ref>             WDA git ref. Defaults to ivista-wda-v0.1.1.
   --timeout <ms>          Command timeout in milliseconds.
@@ -157,7 +168,7 @@ function parseArgs(argv) {
       continue;
     }
     const key = arg.slice(2);
-    if (["json", "help", "version", "all", "booted", "iphone", "ipad", "auto-port"].includes(key)) {
+    if (["json", "help", "version", "all", "booted", "iphone", "ipad", "auto-port", "connected", "real-device", "allow-provisioning-updates"].includes(key)) {
       options[key] = true;
       continue;
     }
@@ -178,6 +189,14 @@ function normalizeOptions(options, positionals) {
     "bundle-id": "bundleId",
     "base-url": "baseUrl",
     "wda-path": "wdaPath",
+    "ios-project": "iosProject",
+    "ios-workspace": "iosWorkspace",
+    "signing-team": "signingTeam",
+    "host-bundle-id": "hostBundleId",
+    "wda-bundle-id": "wdaBundleId",
+    "device-port": "devicePort",
+    "real-device": "realDevice",
+    "allow-provisioning-updates": "allowProvisioningUpdates",
     "auto-port": "autoPort",
     "from-x": "fromX",
     "from-y": "fromY",
@@ -189,7 +208,7 @@ function normalizeOptions(options, positionals) {
     const normalized = aliases[key] || key;
     out[normalized] = value;
   }
-  for (const key of ["port", "timeout", "wait", "x", "y", "width", "height", "fromX", "fromY", "toX", "toY", "duration", "scale", "velocity", "rotation"]) {
+  for (const key of ["port", "devicePort", "timeout", "wait", "x", "y", "width", "height", "fromX", "fromY", "toX", "toY", "duration", "scale", "velocity", "rotation"]) {
     if (out[key] !== undefined) out[key] = Number(out[key]);
   }
   if (out.timeout !== undefined) {
@@ -328,6 +347,29 @@ function printSimulatorBoot(payload) {
   if (payload.device?.udid) console.log(`udid: ${payload.device.udid}`);
 }
 
+function printDeviceList(payload) {
+  if (!payload.ok) {
+    console.log(`Device list failed: ${payload.error || "unknown error"}`);
+    return;
+  }
+  const devices = payload.devices || [];
+  if (devices.length === 0) {
+    console.log("No physical iOS devices found.");
+    return;
+  }
+  console.log("Available iOS Devices");
+  console.log("");
+  const nameWidth = Math.max(...devices.map((device) => String(device.name || "").length), 4);
+  const stateWidth = Math.max(...devices.map((device) => (device.connected ? "connected" : "offline").length), 7);
+  devices.forEach((device, index) => {
+    const number = `${index + 1}.`.padStart(String(devices.length).length + 1);
+    const state = (device.connected ? "connected" : "offline").padEnd(stateWidth);
+    const name = String(device.name || "").padEnd(nameWidth);
+    const os = device.osVersion ? ` iOS ${device.osVersion}` : "";
+    console.log(`${number}  ${state}  ${name}  ${device.udid}${os}`);
+  });
+}
+
 function printWdaCache(payload) {
   if (!payload.ok) {
     console.log(`WDA cache check failed: ${payload.error || "unknown error"}`);
@@ -361,9 +403,14 @@ function printWdaStart(payload) {
   }
   console.log("WDA is running.");
   console.log(`url: ${payload.baseUrl}`);
+  if (payload.targetType) console.log(`target: ${payload.targetType}`);
+  if (payload.device?.name) console.log(`device: ${payload.device.name}`);
   if (payload.port) console.log(`port: ${payload.port}`);
   if (payload.pid) console.log(`pid: ${payload.pid}`);
+  if (payload.proxyPid) console.log(`proxy pid: ${payload.proxyPid}`);
   if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
+  if (payload.proxyLogPath) console.log(`proxy log: ${asPath(payload.proxyLogPath)}`);
+  if (payload.signing?.wdaBundleId) console.log(`wda bundle id: ${payload.signing.wdaBundleId}`);
 }
 
 function printWdaStop(payload) {
@@ -381,7 +428,8 @@ function printWdaStop(payload) {
   for (const item of stopped) {
     const status = item.ok ? "[OK]" : "[WARN]";
     const pid = item.pid ? ` pid=${item.pid}` : "";
-    console.log(`${status} ${item.simulator}${pid}`);
+    const proxyPid = item.proxyPid ? ` proxyPid=${item.proxyPid}` : "";
+    console.log(`${status} ${item.target || item.simulator}${pid}${proxyPid}`);
     if (!item.ok && item.message) console.log(`       ${item.message}`);
   }
 }
@@ -423,6 +471,7 @@ function printHuman(commandKey, payload) {
   if (commandKey === "doctor") return printDoctor(payload);
   if (commandKey === "simulator list") return printSimulatorList(payload);
   if (commandKey === "simulator boot") return printSimulatorBoot(payload);
+  if (commandKey === "device list") return printDeviceList(payload);
   if (commandKey === "wda cache status") return printWdaCache(payload);
   if (commandKey === "wda prepare") return printWdaPrepare(payload);
   if (commandKey === "wda start") return printWdaStart(payload);

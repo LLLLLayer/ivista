@@ -97,6 +97,81 @@ http://127.0.0.1:<port>/
 
 That page confirms WDA is connected and links to `/status` and `/health`. It does not show a live phone screen.
 
+## Real Device Flow
+
+Use this only when the user explicitly asks for a real iPhone/iPad. Prefer finding signing settings from the user's current iOS project instead of asking them to open Xcode manually.
+
+Start by discovering the device:
+
+```bash
+ivista device list --connected
+```
+
+Then inspect the current project directory:
+
+```bash
+find . -maxdepth 2 \( -name "*.xcworkspace" -o -name "*.xcodeproj" \)
+xcodebuild -list -json -workspace <App.xcworkspace>
+xcodebuild -list -json -project <App.xcodeproj>
+```
+
+Choose the app workspace/project and app scheme. Prefer `.xcworkspace` when both workspace and project exist. If there is exactly one obvious app scheme, use it; if there are multiple plausible app schemes, ask the user which app target to use.
+
+Read signing from the host app:
+
+```bash
+xcodebuild -showBuildSettings -json -workspace <App.xcworkspace> -scheme <AppScheme> -configuration Debug -destination 'generic/platform=iOS'
+```
+
+Extract:
+
+- `DEVELOPMENT_TEAM`
+- `PRODUCT_BUNDLE_IDENTIFIER`
+- `CODE_SIGN_STYLE`
+
+Do not copy the host app provisioning profile directly to WDA. WDA needs its own bundle id. Derive one from the host app bundle id unless the user provides one:
+
+```text
+<host bundle id>.ivista.wda
+```
+
+Start WDA on the real device:
+
+```bash
+ivista wda start \
+  --device <device-udid> \
+  --workspace <App.xcworkspace> \
+  --scheme <AppScheme> \
+  --wda-bundle-id <host.bundle.id>.ivista.wda \
+  --auto-port \
+  --wait 180000
+```
+
+For `.xcodeproj` projects:
+
+```bash
+ivista wda start \
+  --device <device-udid> \
+  --ios-project <App.xcodeproj> \
+  --scheme <AppScheme> \
+  --wda-bundle-id <host.bundle.id>.ivista.wda \
+  --auto-port \
+  --wait 180000
+```
+
+If project introspection fails but the team id is known, pass it explicitly:
+
+```bash
+ivista wda start --device <device-udid> --signing-team <TEAMID> --wda-bundle-id <host.bundle.id>.ivista.wda --auto-port --wait 180000
+```
+
+Real-device prerequisites:
+
+- Device is connected, unlocked, paired/trusted, and Developer Mode is enabled.
+- Xcode can build to the device with the selected team.
+- `iproxy` is installed and available in PATH.
+- First launch may require a longer `--wait` because Xcode may create provisioning assets.
+
 ## Agent Workflow
 
 For navigation tasks:

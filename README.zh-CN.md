@@ -2,21 +2,23 @@
 
 [English](README.md) | 简体中文
 
-iVista 是一个 CLI-first 的 iOS Simulator 测试控制层，基于 WebDriverAgent 提供观察、启动和操作能力。它的目标是让人类开发者和 Coding Agent 使用同一套命令行接口来控制移动端测试表面。
+iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 WebDriverAgent 提供观察、启动和操作能力。它的目标是让人类开发者和 Coding Agent 使用同一套命令行接口来控制移动端测试表面。
 
-一句话：iVista 把 iOS Simulator 变成 Agent 可以稳定观察和操作的移动测试表面。
+一句话：iVista 把 iOS Simulator 或连接的 iPhone 变成 Agent 可以稳定观察和操作的移动测试表面。
 
 ## 当前可用能力
 
 - 检查本机 Xcode、`simctl`、Git 和 iVista 缓存状态。
 - 列出和启动 iOS Simulator。
+- 列出已连接的物理 iOS 设备。
 - 自动下载并缓存固定版本的 iVista WebDriverAgent fork。
 - 启动、停止和检查 WebDriverAgent。
+- 通过宿主 iOS App 项目复用签名信息启动真机 WDA。
 - 获取截图和 accessibility/source 树。
 - 执行确定性的 WDA 动作：点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、收起键盘、处理弹窗、读取设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
 - 提供 skill-only Codex Plugin，让 Agent 学会安装并调用同一个 `ivista` CLI。
 
-当前实现优先覆盖 Simulator 工作流。真机一键启动、报告、Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
+当前实现支持 Simulator 工作流，并提供早期真机 WDA 路径。报告、Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
 
 ## 环境要求
 
@@ -25,6 +27,7 @@ iVista 是一个 CLI-first 的 iOS Simulator 测试控制层，基于 WebDriverA
 - Node.js 18 或更高版本。
 - Git。
 - 至少安装一个 iOS Simulator runtime。
+- 真机场景需要已信任/已解锁且开启 Developer Mode 的 iPhone 或 iPad，以及 libimobiledevice 提供的 `iproxy`。
 
 如果 Xcode 工具不可用，可以显式选择 Xcode：
 
@@ -37,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 从仓库安装最新 tag：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.23
 ivista doctor
 ```
 
 更新已有的全局安装：
 
 ```bash
-ivista update --ref v0.1.22
+ivista update --ref v0.1.23
 ```
 
 本地开发安装：
@@ -102,12 +105,14 @@ ivista simulator boot
 ivista simulator boot 1
 ivista simulator boot --name "iPhone 17"
 ivista simulator boot --udid <simulator-udid>
+ivista device list [--connected] [--json]
 
 ivista wda cache status
 ivista wda prepare [--ref ivista-wda-v0.1.1]
 ivista wda start [--auto-port]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --simulator "iPhone 17" --auto-port
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
 ivista wda stop [--port 8100]
 ivista wda status [--port 8100]
 
@@ -148,12 +153,14 @@ ivista app terminate --bundle-id com.example.app
 
 - `--json`：输出原始 JSON。
 - `--simulator <name|udid>`：目标 Simulator 名称或 UDID。
+- `--device <name|udid>`：目标物理 iOS 设备名称或 UDID。
 - `--name <name>`：Simulator 名称。
 - `--udid <udid>`：目标 UDID。
 - `--bundle-id <id>`：App bundle id。
 - `--base-url <url>`：覆盖 WDA base URL。
 - `--port <port>`：WDA 端口，默认 `8100`。
 - `--auto-port`：自动选择可用 WDA 端口。
+- `--workspace`、`--ios-project`、`--scheme`、`--signing-team` 和 `--wda-bundle-id`：真机 WDA 签名参数。
 - `--output <path>`：保存输出文件，目前用于截图。
 - `--duration <seconds>`：手势持续时间。
 - `--scale <number>` 和 `--velocity <number>`：缩放手势参数。
@@ -215,12 +222,14 @@ Plugin 目录保持轻量：
 
 - [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json)：plugin manifest。
 - [plugins/ivista/README.md](plugins/ivista/README.md)：plugin 使用说明。
-- [plugins/ivista/skills/ivista/SKILL.md](plugins/ivista/skills/ivista/SKILL.md)：Agent 使用说明。
+- [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md)：安装和环境修复说明。
+- [plugins/ivista/skills/ivista/SKILL.md](plugins/ivista/skills/ivista/SKILL.md)：设备操作说明。
 
 CLI 实现不放在 plugin bundle 内：
 
 - [bin/ivista.mjs](bin/ivista.mjs)：CLI 入口。
-- [src/ivista-runtime.mjs](src/ivista-runtime.mjs)：CLI runtime。
+- [src/ivista-runtime.mjs](src/ivista-runtime.mjs)：tool registry 和 runtime dispatcher。
+- [src/core.mjs](src/core.mjs)、[src/devices.mjs](src/devices.mjs)、[src/wda.mjs](src/wda.mjs)、[src/actions.mjs](src/actions.mjs)、[src/sessions.mjs](src/sessions.mjs) 和 [src/doctor.mjs](src/doctor.mjs)：按职责拆分的 runtime 模块。
 
 ## 开发
 
@@ -255,7 +264,13 @@ ivista/
 ├── bin/
 │   └── ivista.mjs
 ├── src/
-│   └── ivista-runtime.mjs
+│   ├── actions.mjs
+│   ├── core.mjs
+│   ├── devices.mjs
+│   ├── doctor.mjs
+│   ├── ivista-runtime.mjs
+│   ├── sessions.mjs
+│   └── wda.mjs
 ├── docs/
 │   └── iVista-planning.md
 ├── plugins/
@@ -264,6 +279,8 @@ ivista/
 │       │   └── plugin.json
 │       ├── README.md
 │       └── skills/
+│           ├── ivista-install/
+│           │   └── SKILL.md
 │           └── ivista/
 │               └── SKILL.md
 ├── .agents/

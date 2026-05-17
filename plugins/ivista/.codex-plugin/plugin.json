@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.20",
+  "version": "0.1.23",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WDA.",
   "author": {
     "name": "iVista contributors",
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "iVista",
     "shortDescription": "Operate iOS Simulator and devices from Codex.",
-    "longDescription": "iVista teaches Codex how to install and use the ivista CLI for discovering iOS Simulators, booting them, starting WebDriverAgent with automatic cache management, and performing WDA-backed screenshots, source reads, taps, text input, swipes, and app launch or terminate actions.",
+    "longDescription": "iVista teaches Codex how to install and use the ivista CLI for discovering iOS Simulators and real iOS devices, preparing WebDriverAgent, finding signing settings from host iOS projects, and performing WDA-backed screenshots, source reads, taps, text input, gestures, and app actions.",
     "developerName": "iVista contributors",
     "category": "Developer Tools",
     "capabilities": [
@@ -34,6 +34,7 @@
     "termsOfServiceURL": "https://github.com/LLLLLayer/ivista",
     "defaultPrompt": [
       "Use iVista to inspect my iOS Simulator.",
+      "Install and verify iVista for my iOS project.",
       "Start WDA on the booted Simulator.",
       "Take a screenshot and tell me what to tap next."
     ],

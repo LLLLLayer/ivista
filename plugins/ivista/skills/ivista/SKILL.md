@@ -1,6 +1,6 @@
 ---
 name: ivista
-description: Use iVista when the user wants Codex to install, update, diagnose, or use the ivista CLI to inspect, boot, or operate an iOS Simulator or iPhone/iPad through WebDriverAgent, including WDA startup/status, screenshots, source reads, taps, text input, gestures, app launch/termination, alerts, device controls, or local mobile smoke-test flows.
+description: Use iVista when the user wants Codex to operate an already installed ivista CLI against an iOS Simulator or iPhone/iPad through WebDriverAgent, including WDA startup/status, screenshots, source reads, taps, text input, gestures, app launch/termination, alerts, device controls, or mobile smoke-test flows. For installing, updating, diagnosing, or preparing iVista, use the ivista-install skill instead.
 ---
 
 # iVista
@@ -9,14 +9,11 @@ iVista turns an iOS Simulator, iPhone, or iPad into an Agent-operable test surfa
 
 This plugin is skill-only. It does not expose MCP tools. Use the `ivista` CLI from the shell.
 
-## Route
+## Use
 
-Load only the reference that matches the user's intent:
+Read [references/usage.md](references/usage.md), then operate the device with the CLI.
 
-- **Install or repair iVista**: read [references/install.md](references/install.md) when the user asks to install, update, verify, diagnose, fix `doctor` errors, set up the CLI, or recover a broken local install.
-- **Use iVista**: read [references/usage.md](references/usage.md) when the user asks to operate a Simulator/device, start/check WDA, take screenshots, read source, tap/type/swipe/gesture, manage apps, handle alerts, or run a mobile smoke-test flow.
-
-If the request mixes setup and usage, read `install.md` first, then `usage.md`.
+If iVista is missing or broken, switch to the `ivista-install` skill first.
 
 ## Default Choice
 

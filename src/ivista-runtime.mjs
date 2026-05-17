@@ -1,902 +1,40 @@
-#!/usr/bin/env node
-import { spawn } from "node:child_process";
-import fs from "node:fs";
-import http from "node:http";
-import net from "node:net";
-import os from "node:os";
-import path from "node:path";
-import readline from "node:readline";
-import { fileURLToPath } from "node:url";
-
-const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
-const DEFAULT_WDA_REF = "ivista-wda-v0.1.1";
-const DEFAULT_WDA_PORT = 8100;
-
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-
-function expandHome(value) {
-  if (!value) return value;
-  if (value === "~") return os.homedir();
-  if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
-  return value;
-}
-
-function ivistaHome() {
-  return expandHome(process.env.IVISTA_HOME || "~/.ivista");
-}
-
-function ensureDir(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-function sanitizeRef(ref) {
-  return String(ref).replace(/[^a-zA-Z0-9._-]/g, "_");
-}
-
-function wdaConfig(args = {}) {
-  const repo = args.repo || process.env.IVISTA_WDA_REPO || DEFAULT_WDA_REPO;
-  const ref = args.ref || process.env.IVISTA_WDA_REF || DEFAULT_WDA_REF;
-  const home = ivistaHome();
-  const cacheRoot = path.join(home, "cache", "webdriveragent");
-  const cachePath = args.wdaPath
-    ? path.resolve(expandHome(args.wdaPath))
-    : path.join(cacheRoot, sanitizeRef(ref));
-  return { repo, ref, home, cacheRoot, cachePath };
-}
-
-function sessionDir() {
-  const dir = path.join(ivistaHome(), "sessions");
-  ensureDir(dir);
-  return dir;
-}
-
-function sessionFile(targetId = "default") {
-  return path.join(sessionDir(), `${String(targetId).replace(/[^a-zA-Z0-9._-]/g, "_")}.json`);
-}
-
-function writeSession(targetId, data) {
-  fs.writeFileSync(sessionFile(targetId), JSON.stringify(data, null, 2));
-}
-
-function readSession(targetId = "default") {
-  try {
-    return JSON.parse(fs.readFileSync(sessionFile(targetId), "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-function sessionPort(data) {
-  if (data?.port) return Number(data.port);
-  try {
-    return Number(new URL(data?.baseUrl || "http://127.0.0.1:0").port);
-  } catch {
-    return 0;
-  }
-}
-
-function listSessions() {
-  try {
-    return fs.readdirSync(sessionDir())
-      .filter((name) => name.endsWith(".json"))
-      .map((name) => {
-        const file = path.join(sessionDir(), name);
-        try {
-          return { file, data: JSON.parse(fs.readFileSync(file, "utf8")) };
-        } catch {
-          return { file, data: null };
-        }
-      })
-      .filter((item) => item.data);
-  } catch {
-    return [];
-  }
-}
-
-function removeSessionFile(file) {
-  try {
-    fs.unlinkSync(file);
-  } catch {
-    // Ignore stale session cleanup errors.
-  }
-}
-
-function removeSession(targetId = "default") {
-  removeSessionFile(sessionFile(targetId));
-}
-
-function sessionFileTargetId(file) {
-  return path.basename(file, ".json");
-}
-
-function resolveSessionTargetId(args = {}, baseUrl = wdaBaseUrl(args)) {
-  if (args.targetId) return args.targetId;
-  if (args.simulator) return args.simulator;
-  if (args.udid) return args.udid;
-  if (args.name) return args.name;
-
-  const wantedPort = sessionPort({ baseUrl });
-  const matches = listSessions().filter(({ data }) => {
-    if (wantedPort && sessionPort(data) !== wantedPort) return false;
-    return data.baseUrl === baseUrl || data.port === wantedPort || data.targetType === "simulator";
-  });
-  if (matches.length === 1) {
-    const { file, data } = matches[0];
-    return data.simulator?.udid || data.simulator?.name || sessionFileTargetId(file);
-  }
-
-  const simulatorMatch = matches.find(({ data }) => data.targetType === "simulator" && data.simulator?.udid);
-  if (simulatorMatch) return simulatorMatch.data.simulator.udid;
-
-  return "default";
-}
-
-function isPortAvailable(port) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once("error", () => resolve(false));
-    server.once("listening", () => {
-      server.close(() => resolve(true));
-    });
-    server.listen(port, "127.0.0.1");
-  });
-}
-
-async function findAvailablePort(startPort) {
-  for (let port = startPort; port < startPort + 100; port += 1) {
-    if (await isPortAvailable(port)) return port;
-  }
-  throw new Error(`No available port found in range ${startPort}-${startPort + 99}`);
-}
-
-function runCommand(command, args = [], options = {}) {
-  const timeoutMs = options.timeoutMs || 30000;
-  return new Promise((resolve) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd || projectRoot,
-      env: { ...process.env, ...(options.env || {}) },
-      shell: false,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      resolve({
-        ok: false,
-        code: null,
-        signal: "SIGTERM",
-        stdout,
-        stderr: `${stderr}\nTimed out after ${timeoutMs}ms`.trim(),
-      });
-    }, timeoutMs);
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk) => {
-      const text = chunk.toString();
-      stderr += text;
-      if (options.onStderr) options.onStderr(text);
-    });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      resolve({ ok: false, code: null, signal: null, stdout, stderr: error.message });
-    });
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      resolve({ ok: code === 0, code, signal, stdout, stderr });
-    });
-  });
-}
-
-function createGitProgressRenderer(label) {
-  let lastBucket = -1;
-  let lastStage = "";
-  let lastText = "";
-  let rendered = false;
-  const writeLine = (text) => {
-    rendered = true;
-    lastText = text;
-    readline.clearLine(process.stderr, 0);
-    readline.cursorTo(process.stderr, 0);
-    process.stderr.write(text);
-  };
-  const render = (stage, percent) => {
-    const clamped = Math.max(0, Math.min(100, percent));
-    const bucket = clamped === 100 ? 100 : Math.floor(clamped / 5) * 5;
-    if (stage === lastStage && bucket === lastBucket) return;
-    lastStage = stage;
-    lastBucket = bucket;
-    const width = 20;
-    const filled = Math.round((bucket / 100) * width);
-    const bar = `${"#".repeat(filled)}${"-".repeat(width - filled)}`;
-    writeLine(`${label}: ${stage} [${bar}] ${String(bucket).padStart(3)}%`);
-  };
-  return {
-    update(chunk) {
-      const text = chunk.replace(/\r/g, "\n");
-      for (const line of text.split("\n")) {
-        const match = line.match(/(Enumerating objects|Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files):\s+(\d+)%/);
-        if (match) {
-          render(match[1], Number(match[2]));
-        }
-      }
-    },
-    done() {
-      if (!rendered) writeLine(`${label}: done`);
-      if (lastText) process.stderr.write("\n");
-    },
-  };
-}
-
-function spawnDetached(command, args = [], options = {}) {
-  ensureDir(options.logDir || path.join(ivistaHome(), "logs"));
-  const logPath = options.logPath || path.join(options.logDir || path.join(ivistaHome(), "logs"), `${Date.now()}.log`);
-  const out = fs.openSync(logPath, "a");
-  const child = spawn(command, args, {
-    cwd: options.cwd || projectRoot,
-    env: { ...process.env, ...(options.env || {}) },
-    detached: true,
-    stdio: ["ignore", out, out],
-  });
-  child.unref();
-  return { pid: child.pid, logPath };
-}
-
-function jsonText(value) {
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(value, null, 2),
-      },
-    ],
-  };
-}
-
-function doctorHint(name) {
-  if (name === "xcodebuild") {
-    return {
-      hint: "Xcode command line tools are not available or xcode-select points to the wrong developer directory.",
-      commands: [
-        "xcode-select -p",
-        "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
-        "xcodebuild -version",
-      ],
-    };
-  }
-  if (name === "simctl") {
-    return {
-      hint: "Simulator tools are not available. This is usually caused by a broken Xcode selection.",
-      commands: [
-        "xcrun simctl list devices",
-        "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer",
-      ],
-    };
-  }
-  if (name === "git") {
-    return {
-      hint: "Git is required so iVista can download and cache WebDriverAgent.",
-      commands: [
-        "git --version",
-        "xcode-select --install",
-      ],
-    };
-  }
-  return {
-    hint: "Check that this command is installed and available in PATH.",
-    commands: [],
-  };
-}
-
-async function httpJson(method, url, body, timeoutMs = 10000) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    const payload = body === undefined ? undefined : JSON.stringify(body);
-    const request = http.request(
-      {
-        method,
-        hostname: parsed.hostname,
-        port: parsed.port,
-        path: `${parsed.pathname}${parsed.search}`,
-        headers: payload
-          ? {
-              "content-type": "application/json",
-              "content-length": Buffer.byteLength(payload),
-            }
-          : {},
-        timeout: timeoutMs,
-      },
-      (response) => {
-        let raw = "";
-        response.on("data", (chunk) => {
-          raw += chunk.toString();
-        });
-        response.on("end", () => {
-          let data = raw;
-          try {
-            data = raw ? JSON.parse(raw) : null;
-          } catch {
-            // Keep raw text when WDA returns non-JSON output.
-          }
-          resolve({ statusCode: response.statusCode, data });
-        });
-      },
-    );
-    request.on("timeout", () => {
-      request.destroy(new Error(`HTTP timeout after ${timeoutMs}ms`));
-    });
-    request.on("error", reject);
-    if (payload) request.write(payload);
-    request.end();
-  });
-}
-
-function wdaBaseUrl(args = {}) {
-  const port = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
-  return args.baseUrl || process.env.IVISTA_WDA_BASE_URL || `http://127.0.0.1:${port}`;
-}
-
-function extractSessionId(data) {
-  return (
-    data?.sessionId ||
-    data?.value?.sessionId ||
-    data?.value?.session_id ||
-    data?.value?.capabilities?.sessionId ||
-    null
-  );
-}
-
-function isInvalidSessionResponse(response) {
-  const value = response?.data?.value || {};
-  const error = String(value.error || response?.data?.error || "").toLowerCase();
-  const message = String(value.message || response?.data?.message || "").toLowerCase();
-  return response?.statusCode === 404 && (error.includes("invalid session") || message.includes("session does not exist"));
-}
-
-async function ensureWdaSession(args = {}) {
-  const baseUrl = wdaBaseUrl(args);
-  const targetId = resolveSessionTargetId(args, baseUrl);
-  const saved = readSession(targetId);
-  if (saved.sessionId && !args.forceNewSession) return { targetId, sessionId: saved.sessionId };
-  const response = await httpJson("POST", `${baseUrl}/session`, {
-    capabilities: { alwaysMatch: {} },
-    desiredCapabilities: {},
-  });
-  const sessionId = extractSessionId(response.data);
-  if (!sessionId) {
-    throw new Error(`Unable to create WDA session: ${JSON.stringify(response.data)}`);
-  }
-  writeSession(targetId, { ...saved, baseUrl, sessionId, updatedAt: new Date().toISOString() });
-  return { targetId, sessionId };
-}
-
-async function callWda(args, method, paths, body) {
-  const baseUrl = wdaBaseUrl(args);
-  const needsSession = paths.some((item) => item.includes(":sessionId"));
-  let session = needsSession ? await ensureWdaSession(args) : null;
-  const errors = [];
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    let sawInvalidSession = false;
-    for (const template of paths) {
-      const route = template.replace(":sessionId", session?.sessionId || "");
-      try {
-        const response = await httpJson(method, `${baseUrl}${route}`, body, args.timeoutMs || 10000);
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          return response;
-        }
-        sawInvalidSession ||= needsSession && isInvalidSessionResponse(response);
-        errors.push({ route, statusCode: response.statusCode, data: response.data });
-      } catch (error) {
-        errors.push({ route, error: error.message });
-      }
-    }
-    if (!sawInvalidSession || !needsSession || attempt > 0) break;
-    removeSession(session.targetId);
-    session = await ensureWdaSession({ ...args, forceNewSession: true, targetId: session.targetId });
-    errors.push({ route: "/session", recovered: "stale WDA session was recreated" });
-  }
-  throw new Error(`All WDA routes failed: ${JSON.stringify(errors, null, 2)}`);
-}
-
-async function toolDoctor(args = {}) {
-  const checks = [];
-  for (const [name, command, commandArgs] of [
-    ["xcodebuild", "xcodebuild", ["-version"]],
-    ["simctl", "xcrun", ["simctl", "help"]],
-    ["git", "git", ["--version"]],
-  ]) {
-    const result = await runCommand(command, commandArgs, { timeoutMs: args.timeoutMs || 10000 });
-    checks.push({
-      name,
-      ok: result.ok,
-      stdout: result.stdout.trim().split("\n").slice(0, 3).join("\n"),
-      stderr: result.stderr.trim().split("\n").slice(0, 3).join("\n"),
-      ...(result.ok ? {} : doctorHint(name)),
-    });
-  }
-  const failedChecks = checks.filter((check) => !check.ok);
-  return jsonText({
-    ok: checks.every((check) => check.ok),
-    ivistaHome: ivistaHome(),
-    wda: wdaConfig(args),
-    checks,
-    hints: failedChecks.map((check) => ({
-      name: check.name,
-      hint: check.hint,
-      commands: check.commands || [],
-    })),
-  });
-}
-
-async function toolSimulatorList(args = {}) {
-  let devices = await listAvailableSimulators(args.timeoutMs || 15000);
-  const total = devices.length;
-  if (args.booted) devices = devices.filter((device) => device.state === "Booted");
-  if (args.iphone) devices = devices.filter((device) => /^iPhone\b/.test(device.name));
-  if (args.ipad) devices = devices.filter((device) => /^iPad\b/.test(device.name));
-  if (!args.all) {
-    const seen = new Set();
-    devices = devices.filter((device) => {
-      if (seen.has(device.name)) return false;
-      seen.add(device.name);
-      return true;
-    });
-  }
-  return jsonText({ ok: true, devices, total, filtered: devices.length, compact: !args.all });
-}
-
-async function listAvailableSimulators(timeoutMs = 15000) {
-  const result = await runCommand("xcrun", ["simctl", "list", "devices", "available", "--json"], {
-    timeoutMs,
-  });
-  if (!result.ok) throw new Error(result.stderr || result.stdout);
-  let data;
-  try {
-    data = JSON.parse(result.stdout);
-  } catch {
-    throw new Error("Unable to parse simctl JSON");
-  }
-  const devices = [];
-  for (const [runtime, runtimeDevices] of Object.entries(data.devices || {})) {
-    for (const device of runtimeDevices) {
-      devices.push({
-        runtime,
-        name: device.name,
-        udid: device.udid,
-        state: device.state,
-        isAvailable: device.isAvailable,
-      });
-    }
-  }
-  return devices;
-}
-
-async function resolveSimulator(input) {
-  if (!input) return null;
-  const devices = await listAvailableSimulators();
-  return devices.find((device) => device.udid === input || device.name === input) || null;
-}
-
-async function resolveWdaSimulator(args = {}) {
-  const target = args.simulator || args.name || args.udid;
-  if (target) {
-    const device = await resolveSimulator(target);
-    if (!device) throw new Error(`Simulator not found: ${target}`);
-    return { device, inferred: false };
-  }
-
-  const booted = (await listAvailableSimulators(args.timeoutMs || 15000))
-    .filter((device) => device.state === "Booted");
-  if (booted.length === 1) {
-    return { device: booted[0], inferred: true };
-  }
-  if (booted.length === 0) {
-    throw new Error("No booted Simulator found. Run `ivista simulator boot` or pass --simulator, --name, or --udid.");
-  }
-  const choices = booted.map((device, index) => `${index + 1}. ${device.name} (${device.udid})`).join("\n");
-  throw new Error(`Multiple booted Simulators found:\n${choices}\nPass --simulator, --name, or --udid.`);
-}
-
-async function toolSimulatorBoot(args = {}) {
-  const target = args.simulator || args.name || args.udid;
-  if (!target) throw new Error("Provide simulator, name, or udid.");
-  const device = await resolveSimulator(target);
-  if (!device) throw new Error(`Simulator not found: ${target}`);
-  if (device.state !== "Booted") {
-    const boot = await runCommand("xcrun", ["simctl", "boot", device.udid], {
-      timeoutMs: args.timeoutMs || 60000,
-    });
-    if (!boot.ok && !/Unable to boot device in current state: Booted/i.test(boot.stderr)) {
-      return jsonText({ ok: false, device, error: boot.stderr || boot.stdout });
-    }
-  }
-  const bootstatus = await runCommand("xcrun", ["simctl", "bootstatus", device.udid, "-b"], {
-    timeoutMs: args.timeoutMs || 120000,
-  });
-  return jsonText({
-    ok: bootstatus.ok,
-    device: { ...device, state: "Booted" },
-    stdout: bootstatus.stdout.trim(),
-    stderr: bootstatus.stderr.trim(),
-  });
-}
-
-async function toolWdaPrepare(args = {}) {
-  const cfg = wdaConfig(args);
-  ensureDir(cfg.cacheRoot);
-  const exists = fs.existsSync(path.join(cfg.cachePath, "WebDriverAgent.xcodeproj"));
-  if (!exists && args.wdaPath) {
-    return jsonText({ ok: false, error: `WDA project not found at ${cfg.cachePath}` });
-  }
-  if (!exists) {
-    const progress = args.progress ? createGitProgressRenderer("Downloading WDA") : null;
-    if (args.progress) process.stderr.write(`Downloading WDA ${cfg.ref}\n`);
-    const clone = await runCommand("git", ["clone", "--progress", "--depth", "1", "--branch", cfg.ref, cfg.repo, cfg.cachePath], {
-      timeoutMs: args.timeoutMs || 300000,
-      onStderr: progress ? (chunk) => progress.update(chunk) : undefined,
-    });
-    if (progress) progress.done();
-    if (!clone.ok) return jsonText({ ok: false, config: cfg, error: clone.stderr || clone.stdout });
-  }
-  const metadata = {
-    repo: cfg.repo,
-    ref: cfg.ref,
-    path: cfg.cachePath,
-    preparedAt: new Date().toISOString(),
-  };
-  fs.writeFileSync(path.join(cfg.cachePath, ".ivista-cache.json"), JSON.stringify(metadata, null, 2));
-  return jsonText({ ok: true, ...metadata });
-}
-
-async function toolWdaCacheStatus(args = {}) {
-  const cfg = wdaConfig(args);
-  const exists = fs.existsSync(path.join(cfg.cachePath, "WebDriverAgent.xcodeproj"));
-  let metadata = null;
-  try {
-    metadata = JSON.parse(fs.readFileSync(path.join(cfg.cachePath, ".ivista-cache.json"), "utf8"));
-  } catch {
-    metadata = null;
-  }
-  return jsonText({ ok: true, exists, config: cfg, metadata });
-}
-
-async function toolWdaStartSimulator(args = {}) {
-  const progress = Boolean(args.progress);
-  const progressLine = (text) => {
-    if (progress) process.stderr.write(`${text}\n`);
-  };
-  progressLine("Preparing Simulator and WDA...");
-  const { device, inferred } = await resolveWdaSimulator(args);
-  if (inferred) progressLine(`Using booted Simulator: ${device.name} (${device.udid})`);
-  if (device.state !== "Booted") {
-    progressLine(`Booting Simulator: ${device.name}`);
-    const bootResult = await toolSimulatorBoot({ ...args, simulator: device.udid });
-    const bootText = bootResult.content[0].text;
-    const bootJson = JSON.parse(bootText);
-    if (!bootJson.ok) return bootResult;
-  }
-  const prepared = await toolWdaPrepare(args);
-  const preparedJson = JSON.parse(prepared.content[0].text);
-  if (!preparedJson.ok) return prepared;
-
-  const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
-  const selectedPort = args.autoPort ? await findAvailablePort(requestedPort) : requestedPort;
-  const port = String(selectedPort);
-  const logDir = path.join(ivistaHome(), "logs");
-  ensureDir(logDir);
-  const logPath = path.join(logDir, `wda-simulator-${device.udid}-${Date.now()}.log`);
-  const destination = `platform=iOS Simulator,id=${device.udid}`;
-  const xcodeArgs = [
-    "test",
-    "-project",
-    path.join(preparedJson.path, "WebDriverAgent.xcodeproj"),
-    "-scheme",
-    "WebDriverAgentRunner",
-    "-destination",
-    destination,
-    "USE_PORT=" + port,
-  ];
-  progressLine(`Starting WebDriverAgent with xcodebuild...`);
-  progressLine(`Log: ${logPath}`);
-  const spawned = spawnDetached("xcodebuild", xcodeArgs, { cwd: preparedJson.path, logDir, logPath });
-  const baseUrl = `http://127.0.0.1:${port}`;
-  writeSession(device.udid, {
-    targetType: "simulator",
-    simulator: device,
-    baseUrl,
-    port: selectedPort,
-    pid: spawned.pid,
-    logPath: spawned.logPath,
-    startedAt: new Date().toISOString(),
-  });
-
-  const deadline = Date.now() + (args.waitMs || 90000);
-  const startedWaitingAt = Date.now();
-  let nextProgressAt = 0;
-  let lastError = null;
-  while (Date.now() < deadline) {
-    try {
-      const status = await httpJson("GET", `${baseUrl}/status`, undefined, 3000);
-      if (status.statusCode >= 200 && status.statusCode < 300) {
-        if (progress) process.stderr.write("\n");
-        return jsonText({
-          ok: true,
-          baseUrl,
-          port: selectedPort,
-          pid: spawned.pid,
-          logPath: spawned.logPath,
-          status: status.data,
-        });
-      }
-    } catch (error) {
-      lastError = error.message;
-    }
-    if (progress && Date.now() >= nextProgressAt) {
-      const elapsed = Math.round((Date.now() - startedWaitingAt) / 1000);
-      const remaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
-      process.stderr.write(`Waiting for WDA /status... ${elapsed}s elapsed, ${remaining}s left\r`);
-      nextProgressAt = Date.now() + 3000;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
-  if (progress) process.stderr.write("\n");
-  return jsonText({
-    ok: false,
-    baseUrl,
-    port: selectedPort,
-    pid: spawned.pid,
-    logPath: spawned.logPath,
-    error: lastError || "Timed out waiting for WDA /status.",
-    hint: "If WebDriverAgentRunner crashed or the port is busy, try `ivista wda stop` and then `ivista wda start --auto-port`.",
-  });
-}
-
-async function toolWdaStop(args = {}) {
-  const wantedPort = args.port ? Number(args.port) : null;
-  const wantedTarget = args.simulator || args.udid || args.name || null;
-  const sessions = listSessions();
-  const matching = sessions.filter(({ data }) => {
-    if (wantedPort && sessionPort(data) !== wantedPort) return false;
-    if (wantedTarget && data.simulator?.udid !== wantedTarget && data.simulator?.name !== wantedTarget) return false;
-    return data.targetType === "simulator";
-  });
-  const targets = matching.length > 0 ? matching : [{ file: null, data: { simulator: { udid: wantedTarget || "booted" } } }];
-  const stopped = [];
-  for (const { file, data } of targets) {
-    if (data.pid) {
-      try {
-        process.kill(data.pid, "SIGTERM");
-      } catch {
-        // xcodebuild may already be gone.
-      }
-    }
-    const simTarget = data.simulator?.udid || wantedTarget || "booted";
-    const terminate = await runCommand("xcrun", ["simctl", "terminate", simTarget, "com.facebook.WebDriverAgentRunner.xctrunner"], {
-      timeoutMs: args.timeoutMs || 15000,
-    });
-    if (file) removeSessionFile(file);
-    stopped.push({
-      simulator: simTarget,
-      pid: data.pid || null,
-      ok: terminate.ok || /not running|No such process|The operation couldn/i.test(terminate.stderr),
-      message: (terminate.stderr || terminate.stdout || "").trim(),
-    });
-  }
-  return jsonText({ ok: true, stopped });
-}
-
-async function toolWdaStatus(args = {}) {
-  const baseUrl = wdaBaseUrl(args);
-  const response = await httpJson("GET", `${baseUrl}/status`, undefined, args.timeoutMs || 10000);
-  return jsonText({ ok: response.statusCode >= 200 && response.statusCode < 300, baseUrl, response });
-}
-
-async function toolScreenshot(args = {}) {
-  const response = await callWda(args, "GET", ["/screenshot", "/session/:sessionId/screenshot"]);
-  let output = null;
-  if (args.output) {
-    const value = response.data?.value || response.data;
-    if (typeof value !== "string") throw new Error("WDA screenshot response did not contain base64 image data.");
-    output = path.resolve(expandHome(args.output));
-    ensureDir(path.dirname(output));
-    fs.writeFileSync(output, Buffer.from(value, "base64"));
-  }
-  return jsonText({ ok: true, output, response: response.data });
-}
-
-async function toolSource(args = {}) {
-  const response = await callWda(args, "GET", ["/source", "/session/:sessionId/source"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolTap(args = {}) {
-  const x = Number(args.x);
-  const y = Number(args.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Provide numeric x and y.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/tap", "/wda/tap"], { x, y });
-  return jsonText({ ok: true, response: response.data });
-}
-
-function coordinateBody(args = {}) {
-  const x = Number(args.x);
-  const y = Number(args.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("Provide numeric x and y.");
-  return { x, y };
-}
-
-async function toolInput(args = {}) {
-  if (typeof args.text !== "string") throw new Error("Provide text.");
-  const body = { value: [...args.text], text: args.text };
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/keys", "/session/:sessionId/keys", "/wda/keys"], body);
-  return jsonText({ ok: true, response: response.data });
-}
-
-function swipePoints(args = {}) {
-  if (["up", "down", "left", "right"].includes(args.direction)) {
-    const width = Number(args.width || 390);
-    const height = Number(args.height || 844);
-    const midX = Math.round(width / 2);
-    const midY = Math.round(height / 2);
-    const spanX = Math.round(width * 0.35);
-    const spanY = Math.round(height * 0.35);
-    if (args.direction === "up") return { fromX: midX, fromY: midY + spanY, toX: midX, toY: midY - spanY };
-    if (args.direction === "down") return { fromX: midX, fromY: midY - spanY, toX: midX, toY: midY + spanY };
-    if (args.direction === "left") return { fromX: midX + spanX, fromY: midY, toX: midX - spanX, toY: midY };
-    return { fromX: midX - spanX, fromY: midY, toX: midX + spanX, toY: midY };
-  }
-  return {
-    fromX: Number(args.fromX),
-    fromY: Number(args.fromY),
-    toX: Number(args.toX),
-    toY: Number(args.toY),
-  };
-}
-
-async function toolSwipe(args = {}) {
-  const points = swipePoints(args);
-  for (const [key, value] of Object.entries(points)) {
-    if (!Number.isFinite(value)) throw new Error(`Provide numeric ${key}, or use direction.`);
-  }
-  const body = { ...points, duration: Number(args.duration || 0.25) };
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/dragfromtoforduration"], body);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDoubleTap(args = {}) {
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/doubleTap", "/wda/doubleTap"], coordinateBody(args));
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolTwoFingerTap(args = {}) {
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/twoFingerTap", "/wda/twoFingerTap"], {});
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolLongPress(args = {}) {
-  const duration = Number(args.duration || 1);
-  if (!Number.isFinite(duration)) throw new Error("Provide numeric duration.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/touchAndHold", "/wda/touchAndHold"], {
-    ...coordinateBody(args),
-    duration,
-  });
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDrag(args = {}) {
-  const points = swipePoints(args);
-  for (const [key, value] of Object.entries(points)) {
-    if (!Number.isFinite(value)) throw new Error(`Provide numeric ${key}.`);
-  }
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/dragfromtoforduration", "/wda/dragfromtoforduration"], {
-    ...points,
-    duration: Number(args.duration || 0.5),
-  });
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolPinch(args = {}) {
-  const scale = Number(args.scale);
-  const velocity = Number(args.velocity);
-  if (!Number.isFinite(scale) || !Number.isFinite(velocity)) throw new Error("Provide numeric scale and velocity.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/pinch", "/wda/pinch"], { scale, velocity });
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolRotate(args = {}) {
-  const rotation = Number(args.rotation);
-  const velocity = Number(args.velocity);
-  if (!Number.isFinite(rotation) || !Number.isFinite(velocity)) throw new Error("Provide numeric rotation and velocity.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/rotate", "/wda/rotate"], { rotation, velocity });
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolHome(args = {}) {
-  const response = await callWda(args, "POST", ["/wda/homescreen", "/session/:sessionId/wda/homescreen"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolKeyboardDismiss(args = {}) {
-  const body = args.keyNames ? { keyNames: String(args.keyNames).split(",").map((item) => item.trim()).filter(Boolean) } : {};
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/keyboard/dismiss", "/wda/keyboard/dismiss"], body);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolAlertAccept(args = {}) {
-  const response = await callWda(args, "POST", ["/session/:sessionId/alert/accept", "/alert/accept"], args.name ? { name: args.name } : {});
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolAlertDismiss(args = {}) {
-  const response = await callWda(args, "POST", ["/session/:sessionId/alert/dismiss", "/alert/dismiss"], args.name ? { name: args.name } : {});
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolAlertText(args = {}) {
-  const response = await callWda(args, "GET", ["/session/:sessionId/alert/text", "/alert/text"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolAlertInput(args = {}) {
-  if (typeof args.text !== "string") throw new Error("Provide text.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/alert/text", "/alert/text"], { value: args.text });
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolAlertButtons(args = {}) {
-  const response = await callWda(args, "GET", ["/session/:sessionId/wda/alert/buttons", "/wda/alert/buttons"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDeviceLock(args = {}) {
-  const response = await callWda(args, "POST", ["/wda/lock", "/session/:sessionId/wda/lock"], {});
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDeviceUnlock(args = {}) {
-  const response = await callWda(args, "POST", ["/wda/unlock", "/session/:sessionId/wda/unlock"], {});
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDeviceLocked(args = {}) {
-  const response = await callWda(args, "GET", ["/wda/locked", "/session/:sessionId/wda/locked"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDeviceInfo(args = {}) {
-  const response = await callWda(args, "GET", ["/wda/device/info", "/session/:sessionId/wda/device/info"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDeviceBattery(args = {}) {
-  const response = await callWda(args, "GET", ["/session/:sessionId/wda/batteryInfo", "/wda/batteryInfo"]);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolDevicePress(args = {}) {
-  if (!args.name) throw new Error("Provide button name, for example volumeUp or volumeDown.");
-  const body = { name: args.name };
-  if (args.duration !== undefined) body.duration = Number(args.duration);
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/pressButton", "/wda/pressButton"], body);
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolLaunchApp(args = {}) {
-  if (!args.bundleId) throw new Error("Provide bundleId.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/apps/launch"], {
-    bundleId: args.bundleId,
-    arguments: args.arguments || [],
-    environment: args.environment || {},
-  });
-  return jsonText({ ok: true, response: response.data });
-}
-
-async function toolTerminateApp(args = {}) {
-  if (!args.bundleId) throw new Error("Provide bundleId.");
-  const response = await callWda(args, "POST", ["/session/:sessionId/wda/apps/terminate"], {
-    bundleId: args.bundleId,
-  });
-  return jsonText({ ok: true, response: response.data });
-}
+import { toolDoctor } from "./doctor.mjs";
+import { toolDeviceList, toolSimulatorBoot, toolSimulatorList } from "./devices.mjs";
+import {
+  toolWdaCacheStatus,
+  toolWdaPrepare,
+  toolWdaStartSimulator,
+  toolWdaStatus,
+  toolWdaStop,
+} from "./wda.mjs";
+import {
+  toolAlertAccept,
+  toolAlertButtons,
+  toolAlertDismiss,
+  toolAlertInput,
+  toolAlertText,
+  toolDeviceBattery,
+  toolDeviceInfo,
+  toolDeviceLock,
+  toolDeviceLocked,
+  toolDevicePress,
+  toolDeviceUnlock,
+  toolDoubleTap,
+  toolDrag,
+  toolHome,
+  toolInput,
+  toolKeyboardDismiss,
+  toolLaunchApp,
+  toolLongPress,
+  toolPinch,
+  toolRotate,
+  toolScreenshot,
+  toolSource,
+  toolSwipe,
+  toolTap,
+  toolTerminateApp,
+  toolTwoFingerTap,
+} from "./actions.mjs";
 
 export const tools = {
   ivista_doctor: {
@@ -938,6 +76,17 @@ export const tools = {
     },
     handler: toolSimulatorBoot,
   },
+  ivista_device_list: {
+    description: "List connected physical iOS devices using xcrun devicectl.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        timeoutMs: { type: "number" },
+        connected: { type: "boolean" },
+      },
+    },
+    handler: toolDeviceList,
+  },
   ivista_wda_cache_status: {
     description: "Inspect the local cached WebDriverAgent project.",
     inputSchema: {
@@ -964,17 +113,31 @@ export const tools = {
     handler: toolWdaPrepare,
   },
   ivista_wda_start_simulator: {
-    description: "Boot a Simulator if needed, prepare cached WDA, start WebDriverAgent, and wait for /status.",
+    description: "Start WebDriverAgent for a Simulator or physical iOS device, and wait for /status.",
     inputSchema: {
       type: "object",
-      required: ["simulator"],
       properties: {
         simulator: { type: "string" },
+        device: { type: "string" },
+        realDevice: { type: "boolean" },
+        name: { type: "string" },
+        udid: { type: "string" },
         repo: { type: "string" },
         ref: { type: "string" },
         wdaPath: { type: "string" },
+        iosProject: { type: "string" },
+        iosWorkspace: { type: "string" },
+        workspace: { type: "string" },
+        project: { type: "string" },
+        scheme: { type: "string" },
+        configuration: { type: "string" },
+        signingTeam: { type: "string" },
+        hostBundleId: { type: "string" },
+        wdaBundleId: { type: "string" },
         port: { type: "number" },
+        devicePort: { type: "number" },
         autoPort: { type: "boolean" },
+        allowProvisioningUpdates: { type: "boolean" },
         waitMs: { type: "number" },
         timeoutMs: { type: "number" },
       },
@@ -982,11 +145,12 @@ export const tools = {
     handler: toolWdaStartSimulator,
   },
   ivista_wda_stop: {
-    description: "Stop WebDriverAgent for a Simulator, terminating the runner app and cleaning the saved session.",
+    description: "Stop WebDriverAgent for a Simulator or device and clean the saved session.",
     inputSchema: {
       type: "object",
       properties: {
         simulator: { type: "string" },
+        device: { type: "string" },
         udid: { type: "string" },
         name: { type: "string" },
         port: { type: "number" },

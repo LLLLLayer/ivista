@@ -2,21 +2,23 @@
 
 English | [简体中文](README.zh-CN.md)
 
-iVista is a CLI-first control layer for iOS Simulator testing through WebDriverAgent. It gives humans and coding agents the same shell interface for observing, starting, and operating a Simulator.
+iVista is a CLI-first control layer for iOS Simulator and real-device testing through WebDriverAgent. It gives humans and coding agents the same shell interface for observing, starting, and operating iOS test surfaces.
 
-In one sentence: iVista turns an iOS Simulator into an agent-operable mobile test surface.
+In one sentence: iVista turns an iOS Simulator or connected iPhone into an agent-operable mobile test surface.
 
 ## What Works Today
 
 - Check local Xcode, `simctl`, Git, and iVista cache readiness.
 - List and boot iOS Simulators.
+- List connected physical iOS devices.
 - Download and cache a pinned iVista WebDriverAgent fork automatically.
 - Start, stop, and check WebDriverAgent.
+- Start real-device WDA by reusing signing settings from a host iOS app project.
 - Capture screenshots and accessibility/source trees.
 - Run deterministic WDA actions: tap, double tap, two-finger tap, long press, drag, pinch, rotate, type, swipe, Home, keyboard dismiss, alerts, device info, device lock/unlock, hardware button press, app launch, and app termination.
 - Provide a skill-only Codex plugin that teaches agents how to install and call the same `ivista` CLI.
 
-The current implementation focuses on the Simulator workflow first. Real-device bootstrap, richer reports, recipes, and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
+The current implementation supports Simulator workflows and an early real-device WDA path. Richer reports, recipes, and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
 
 ## Requirements
 
@@ -25,6 +27,7 @@ The current implementation focuses on the Simulator workflow first. Real-device 
 - Node.js 18 or newer.
 - Git.
 - At least one installed iOS Simulator runtime.
+- For real devices: a trusted/unlocked iPhone or iPad with Developer Mode enabled, plus `iproxy` from libimobiledevice.
 
 If Xcode tools fail, select Xcode explicitly:
 
@@ -37,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the latest tagged CLI from this repository:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.23
 ivista doctor
 ```
 
 Update an existing global install:
 
 ```bash
-ivista update --ref v0.1.22
+ivista update --ref v0.1.23
 ```
 
 For local development from this checkout:
@@ -102,12 +105,14 @@ ivista simulator boot
 ivista simulator boot 1
 ivista simulator boot --name "iPhone 17"
 ivista simulator boot --udid <simulator-udid>
+ivista device list [--connected] [--json]
 
 ivista wda cache status
 ivista wda prepare [--ref ivista-wda-v0.1.1]
 ivista wda start [--auto-port]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --simulator "iPhone 17" --auto-port
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
 ivista wda stop [--port 8100]
 ivista wda status [--port 8100]
 
@@ -148,12 +153,14 @@ Useful options:
 
 - `--json`: print raw JSON.
 - `--simulator <name|udid>`: target Simulator name or UDID.
+- `--device <name|udid>`: target physical iOS device name or UDID.
 - `--name <name>`: Simulator name.
 - `--udid <udid>`: target UDID.
 - `--bundle-id <id>`: app bundle identifier.
 - `--base-url <url>`: override the WDA base URL.
 - `--port <port>`: WDA port, defaulting to `8100`.
 - `--auto-port`: find an available WDA port automatically.
+- `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, and `--wda-bundle-id`: real-device WDA signing inputs.
 - `--output <path>`: save command output, currently used by screenshots.
 - `--duration <seconds>`: gesture duration.
 - `--scale <number>` and `--velocity <number>`: pinch parameters.
@@ -215,12 +222,14 @@ The plugin directory is intentionally thin:
 
 - [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json): plugin manifest.
 - [plugins/ivista/README.md](plugins/ivista/README.md): plugin-specific usage notes.
-- [plugins/ivista/skills/ivista/SKILL.md](plugins/ivista/skills/ivista/SKILL.md): agent instructions.
+- [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md): install and environment repair instructions.
+- [plugins/ivista/skills/ivista/SKILL.md](plugins/ivista/skills/ivista/SKILL.md): device operation instructions.
 
 The CLI implementation lives outside the plugin bundle:
 
 - [bin/ivista.mjs](bin/ivista.mjs): CLI entrypoint.
-- [src/ivista-runtime.mjs](src/ivista-runtime.mjs): runtime functions behind the CLI.
+- [src/ivista-runtime.mjs](src/ivista-runtime.mjs): tool registry and runtime dispatcher.
+- [src/core.mjs](src/core.mjs), [src/devices.mjs](src/devices.mjs), [src/wda.mjs](src/wda.mjs), [src/actions.mjs](src/actions.mjs), [src/sessions.mjs](src/sessions.mjs), and [src/doctor.mjs](src/doctor.mjs): focused runtime modules.
 
 ## Development
 
@@ -255,7 +264,13 @@ ivista/
 ├── bin/
 │   └── ivista.mjs
 ├── src/
-│   └── ivista-runtime.mjs
+│   ├── actions.mjs
+│   ├── core.mjs
+│   ├── devices.mjs
+│   ├── doctor.mjs
+│   ├── ivista-runtime.mjs
+│   ├── sessions.mjs
+│   └── wda.mjs
 ├── docs/
 │   └── iVista-planning.md
 ├── plugins/
@@ -264,6 +279,8 @@ ivista/
 │       │   └── plugin.json
 │       ├── README.md
 │       └── skills/
+│           ├── ivista-install/
+│           │   └── SKILL.md
 │           └── ivista/
 │               └── SKILL.md
 ├── .agents/

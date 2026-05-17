@@ -1,13 +1,13 @@
 # iVista Codex Plugin
 
-iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control. The plugin contributes a skill that tells Codex how to install and use the `ivista` CLI.
+iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control. The plugin contributes skills that tell Codex how to install and use the `ivista` CLI.
 
 This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, skills, and plugin docs. The CLI implementation lives at the repository root in `bin/` and `src/`, and is installed through the npm package.
 
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.23
 ivista doctor
 ```
 
@@ -88,3 +88,8 @@ The CLI accepts these environment variables:
 - `IVISTA_WDA_BASE_URL`: overrides the WDA URL for direct connections
 
 Use `--wda-path` only for offline use, enterprise forks, or WDA debugging.
+
+## Skills
+
+- `ivista-install`: install, update, diagnose, repair, and prepare Simulator or real-device prerequisites.
+- `ivista`: operate a Simulator or real device after the CLI is available.
