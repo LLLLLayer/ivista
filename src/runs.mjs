@@ -249,6 +249,10 @@ function eventDescription(event, reportDir) {
     if (event.result?.error) pieces.push(`error: ${event.result.error}`);
     return pieces.join(" ");
   }
+  if (event.type === "export") {
+    const link = event.output ? `[${path.basename(event.output)}](${relativeLink(reportDir, event.output)})` : "";
+    return `export ${event.format || "run"}${link ? ` ${link}` : ""}`;
+  }
   return event.type;
 }
 

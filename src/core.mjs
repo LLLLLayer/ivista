@@ -8,7 +8,7 @@ import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
-export const DEFAULT_WDA_REF = "ivista-wda-v0.1.1";
+export const DEFAULT_WDA_REF = "ivista-wda-v0.1.2";
 export const DEFAULT_WDA_PORT = 8100;
 
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

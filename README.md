@@ -40,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the latest tagged CLI from this repository:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.26
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.27
 ivista doctor
 ```
 
 Update an existing global install:
 
 ```bash
-ivista update --ref v0.1.26
+ivista update --ref v0.1.27
 ```
 
 For local development from this checkout:
@@ -134,7 +134,7 @@ ivista simulator boot --udid <simulator-udid>
 ivista device list [--connected] [--json]
 
 ivista wda cache status
-ivista wda prepare [--ref ivista-wda-v0.1.1]
+ivista wda prepare [--ref ivista-wda-v0.1.2]
 ivista wda start [--auto-port]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --simulator "iPhone 17" --auto-port
@@ -214,7 +214,7 @@ iVista manages WebDriverAgent automatically. Users should not clone WDA manually
 Defaults:
 
 - WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
-- WDA ref: `ivista-wda-v0.1.1`
+- WDA ref: `ivista-wda-v0.1.2`
 - iVista home: `~/.ivista`
 - WDA cache: `~/.ivista/cache/webdriveragent/<ref>/`
 - WDA port: `8100`
@@ -224,8 +224,8 @@ The default WDA ref is a pinned tag from the `ivista-wda` fork. CLI versions and
 Override WDA only when needed:
 
 ```bash
-ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.1
-ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.1
+ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.2
+ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.2
 ```
 
 Use `--wda-path` for offline work, enterprise forks, or debugging WDA itself:
@@ -374,7 +374,7 @@ iVista itself is licensed under MIT. The CLI does not vendor WebDriverAgent into
 By default, iVista downloads a pinned WDA fork at runtime:
 
 - WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
-- WDA ref: `ivista-wda-v0.1.1`
+- WDA ref: `ivista-wda-v0.1.2`
 - Cache path: `~/.ivista/cache/webdriveragent/<ref>/`
 
 The WDA fork is an independent open-source project with its own license and third-party notices. If you distribute a customized WDA source tree or binary, keep the license and vendor notices from the WDA repository.

@@ -25,7 +25,7 @@ If `ivista doctor` reports issues, prefer following its fix hints before attempt
 Install the released CLI from the GitHub npm package source:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.26
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.27
 ```
 
 For local development from a checked-out repo:
@@ -127,7 +127,7 @@ iVista manages WebDriverAgent by default.
 If the WDA cache looks corrupted, ask before removing it. The narrow removal command for the default ref is:
 
 ```bash
-rm -rf ~/.ivista/cache/webdriveragent/ivista-wda-v0.1.1
+rm -rf ~/.ivista/cache/webdriveragent/ivista-wda-v0.1.2
 ivista wda prepare
 ```
 
@@ -135,7 +135,7 @@ Explain that `rm -rf` recursively deletes the target path without prompting, so 
 
 ## Common Repair Hints
 
-- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.26`.
+- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.27`.
 - Old version: run `ivista update`.
 - Xcode tools missing: install or select Xcode, then rerun `ivista doctor`.
 - Real device missing: unlock the device, trust this Mac, enable Developer Mode, reconnect USB, then run `ivista device list --connected`.

@@ -38,8 +38,8 @@ WDA branch should normally be `develop`. Do not tag WDA before the Xcode build p
 3. Update the outer CLI release:
 
 - Bump `package.json` version.
-- Bump `CLI_VERSION` in `bin/ivista.mjs`.
-- If WDA changed, update `DEFAULT_WDA_REF` in `src/ivista-runtime.mjs`.
+- Bump `CLI_VERSION` in `src/cli/constants.mjs`.
+- If WDA changed, update `DEFAULT_WDA_REF` in `src/core.mjs`.
 - Update help text, README, Chinese README, project planning docs, plugin docs, and skill references that mention the old CLI version or WDA ref.
 
 Useful search:
