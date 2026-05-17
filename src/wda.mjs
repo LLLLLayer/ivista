@@ -13,10 +13,9 @@ import {
   jsonText,
   runCommand,
   spawnDetached,
-  wdaBaseUrl,
   wdaConfig,
 } from "./core.mjs";
-import { listSessions, removeSessionFile, sessionPort, writeSession } from "./sessions.mjs";
+import { listSessions, removeSessionFile, resolveWdaBaseUrl, sessionPort, writeSession } from "./sessions.mjs";
 import {
   resolveHostSigning,
   resolvePhysicalDevice,
@@ -119,6 +118,21 @@ function iproxyArgsForDevice(device, args, selectedPort, devicePort) {
   return proxyArgs;
 }
 
+function urlHost(host) {
+  return String(host).includes(":") ? `[${host}]` : String(host);
+}
+
+function usesCoreDeviceTunnel(device, args = {}) {
+  return !args.usb
+    && device.transportType === "localNetwork"
+    && device.tunnelState === "connected"
+    && Boolean(device.tunnelIPAddress);
+}
+
+function coreDeviceTunnelBaseUrl(device, port) {
+  return `http://${urlHost(device.tunnelIPAddress)}:${port}`;
+}
+
 async function reuseReachableWda({ targetType, target, baseUrl, port, progressLine }) {
   const probe = await probeWda(baseUrl);
   if (!probe.reachable) return null;
@@ -131,7 +145,44 @@ async function reuseReachableWda({ targetType, target, baseUrl, port, progressLi
   if (portSession && !matchesTarget(portSession)) return null;
   const targetSessionMatchesUrl = targetSession && (targetSession.baseUrl === baseUrl || sessionPort(targetSession) === port);
   const existing = portSession || (targetSessionMatchesUrl ? targetSession : {}) || {};
+  const viaCoreDeviceTunnel = targetType === "device"
+    && target.tunnelIPAddress
+    && baseUrl.includes(urlHost(target.tunnelIPAddress));
+  const refreshed = {
+    ...existing,
+    ...(viaCoreDeviceTunnel
+      ? {
+          proxyPid: null,
+          proxyLogPath: null,
+          signing: {
+            ...(existing.signing || {}),
+            transportType: target.transportType || null,
+            tunnelIPAddress: target.tunnelIPAddress || null,
+            proxyMode: "coredevice",
+          },
+        }
+      : {}),
+  };
   progressLine(`Reusing reachable WDA at ${baseUrl}`);
+  if (targetType === "device") {
+    writeSession(target.udid, {
+      ...refreshed,
+      targetType,
+      device: target,
+      baseUrl,
+      port,
+      updatedAt: new Date().toISOString(),
+    });
+  } else if (targetType === "simulator") {
+    writeSession(target.udid, {
+      ...refreshed,
+      targetType,
+      simulator: target,
+      baseUrl,
+      port,
+      updatedAt: new Date().toISOString(),
+    });
+  }
   return jsonText({
     ok: true,
     reused: true,
@@ -139,12 +190,12 @@ async function reuseReachableWda({ targetType, target, baseUrl, port, progressLi
     ...(targetType === "device" ? { device: target } : { simulator: target }),
     baseUrl,
     port,
-    devicePort: existing.devicePort || null,
-    pid: existing.pid || null,
-    proxyPid: existing.proxyPid || null,
-    logPath: existing.logPath || null,
-    proxyLogPath: existing.proxyLogPath || null,
-    signing: existing.signing || null,
+    devicePort: refreshed.devicePort || null,
+    pid: refreshed.pid || null,
+    proxyPid: refreshed.proxyPid || null,
+    logPath: refreshed.logPath || null,
+    proxyLogPath: refreshed.proxyLogPath || null,
+    signing: refreshed.signing || null,
     status: probe.status.data,
   });
 }
@@ -200,7 +251,10 @@ export async function toolWdaStartDevice(args = {}) {
   if (inferred) progressLine(`Using connected iOS device: ${device.name} (${device.udid})`);
 
   const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
-  const requestedBaseUrl = `http://127.0.0.1:${requestedPort}`;
+  const useCoreDeviceTunnel = usesCoreDeviceTunnel(device, args);
+  const requestedBaseUrl = useCoreDeviceTunnel
+    ? coreDeviceTunnelBaseUrl(device, requestedPort)
+    : `http://127.0.0.1:${requestedPort}`;
   const alreadyRunning = await reuseReachableWda({
     targetType: "device",
     target: device,
@@ -209,7 +263,7 @@ export async function toolWdaStartDevice(args = {}) {
     progressLine,
   });
   if (alreadyRunning) return alreadyRunning;
-  if (!args.autoPort && !await isPortAvailable(requestedPort)) {
+  if (!useCoreDeviceTunnel && !args.autoPort && !await isPortAvailable(requestedPort)) {
     return jsonText({
       ok: false,
       targetType: "device",
@@ -222,7 +276,7 @@ export async function toolWdaStartDevice(args = {}) {
     });
   }
 
-  if (!await commandExists("iproxy")) {
+  if (!useCoreDeviceTunnel && !await commandExists("iproxy")) {
     return jsonText({
       ok: false,
       targetType: "device",
@@ -277,10 +331,12 @@ export async function toolWdaStartDevice(args = {}) {
   }
   const wdaBundleId = wdaBundleIdFromSigning(signing, args);
 
-  const selectedPort = args.autoPort ? await findAvailablePort(requestedPort) : requestedPort;
+  const selectedPort = args.autoPort && !useCoreDeviceTunnel ? await findAvailablePort(requestedPort) : requestedPort;
   const port = String(selectedPort);
   const devicePort = String(args.devicePort || selectedPort);
-  const baseUrl = `http://127.0.0.1:${port}`;
+  const baseUrl = useCoreDeviceTunnel
+    ? coreDeviceTunnelBaseUrl(device, devicePort)
+    : `http://127.0.0.1:${port}`;
   const logDir = path.join(ivistaHome(), "logs");
   ensureDir(logDir);
   const stamp = Date.now();
@@ -304,10 +360,16 @@ export async function toolWdaStartDevice(args = {}) {
 
   progressLine(`Signing WDA with team: ${signing.developmentTeam}`);
   progressLine(`WDA bundle id: ${wdaBundleId}`);
-  const proxyArgs = iproxyArgsForDevice(device, args, selectedPort, devicePort);
-  const proxyMode = proxyArgs.includes("-n") ? "network" : "usb";
-  progressLine(`Starting iproxy ${selectedPort}:${devicePort} (${proxyMode})...`);
-  const proxy = spawnDetached("iproxy", proxyArgs, { logDir, logPath: proxyLogPath });
+  let proxy = { pid: null, logPath: null };
+  let proxyMode = "coredevice";
+  if (useCoreDeviceTunnel) {
+    progressLine(`Using CoreDevice tunnel: ${baseUrl}`);
+  } else {
+    const proxyArgs = iproxyArgsForDevice(device, args, selectedPort, devicePort);
+    proxyMode = proxyArgs.includes("-n") ? "network" : "usb";
+    progressLine(`Starting iproxy ${selectedPort}:${devicePort} (${proxyMode})...`);
+    proxy = spawnDetached("iproxy", proxyArgs, { logDir, logPath: proxyLogPath });
+  }
   progressLine("Starting WebDriverAgent with xcodebuild...");
   progressLine(`Log: ${wdaLogPath}`);
   const spawned = spawnDetached("xcodebuild", xcodeArgs, { cwd: preparedJson.path, logDir, logPath: wdaLogPath });
@@ -322,6 +384,8 @@ export async function toolWdaStartDevice(args = {}) {
       configuration: signing.configuration || null,
       containerPath: signing.containerPath || null,
       transportType: device.transportType || null,
+      tunnelIPAddress: device.tunnelIPAddress || null,
+      proxyMode,
     },
     baseUrl,
     port: selectedPort,
@@ -353,12 +417,14 @@ export async function toolWdaStartDevice(args = {}) {
           proxyPid: proxy.pid,
           logPath: spawned.logPath,
           proxyLogPath: proxy.logPath,
-	      signing: {
-	        developmentTeam: signing.developmentTeam,
-	        hostBundleId: signing.bundleId,
-	        wdaBundleId,
-	        transportType: device.transportType || null,
-	      },
+          signing: {
+            developmentTeam: signing.developmentTeam,
+            hostBundleId: signing.bundleId,
+            wdaBundleId,
+            transportType: device.transportType || null,
+            tunnelIPAddress: device.tunnelIPAddress || null,
+            proxyMode,
+          },
           status: status.data,
         });
       }
@@ -390,12 +456,14 @@ export async function toolWdaStartDevice(args = {}) {
     proxyPid: proxy.pid,
     logPath: spawned.logPath,
     proxyLogPath: proxy.logPath,
-	signing: {
-	  developmentTeam: signing.developmentTeam,
-	  hostBundleId: signing.bundleId,
-	  wdaBundleId,
-	  transportType: device.transportType || null,
-	},
+    signing: {
+      developmentTeam: signing.developmentTeam,
+      hostBundleId: signing.bundleId,
+      wdaBundleId,
+      transportType: device.transportType || null,
+      tunnelIPAddress: device.tunnelIPAddress || null,
+      proxyMode,
+    },
     error: lastError || "Timed out waiting for real-device WDA /status.",
     hint: diagnostics.hints[0] || "Unlock the device, trust this Mac, keep Developer Mode enabled, then check the WDA and iproxy logs.",
     hints: diagnostics.hints,
@@ -571,7 +639,7 @@ export async function toolWdaStop(args = {}) {
 }
 
 export async function toolWdaStatus(args = {}) {
-  const baseUrl = wdaBaseUrl(args);
+  const baseUrl = resolveWdaBaseUrl(args);
   const response = await httpJson("GET", `${baseUrl}/status`, undefined, args.timeoutMs || 10000);
   return jsonText({ ok: response.statusCode >= 200 && response.statusCode < 300, baseUrl, response });
 }

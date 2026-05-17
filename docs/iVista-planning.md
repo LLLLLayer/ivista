@@ -674,7 +674,7 @@ TODO：
 - 修正 `--auto-port` 的端口可用性判断，避免 IPv6 或已有 `iproxy` 监听导致误判。
 - 在 `wda start --device` 失败时区分三类问题：签名/安装失败、WDA Runner 未启动、端口转发失败。
 - 如果 `devicectl` 可见但 `idevice_id -l` 看不到设备，输出明确 fix hint，提示用户重新插线、解锁、信任此电脑，或检查 usbmuxd/libimobiledevice。
-- 无线真机路径仍需单独验证。后续调研 CoreDevice-native 端口转发或其它真机转发方案，减少对 `iproxy --network` 的依赖。
+- 无线真机路径已验证可通过 CoreDevice tunnel 直接访问 WDA。后续继续打磨错误提示，避免用户误以为必须依赖 `iproxy --network`。
 - 后续再处理 Xcode/iOS 版本兼容性验证；当前不把升级 Xcode 作为继续开发的前置条件。
 
 交付：
@@ -694,8 +694,8 @@ TODO：
 - 自动读取 Xcode Team。当前已支持从当前目录或最近的父级 iOS project/workspace 推断。
 - 自动配置 WDA bundle id。当前默认使用宿主 bundle id 加 `.ivista.wda`。
 - 自动 build/test 启动 WDA。当前已接入 `xcodebuild test`。
-- 自动端口转发。当前真机路径已接入 `iproxy`。
-- 无线真机路径。当前会识别 `transportType=localNetwork` 并自动使用 `iproxy --network`，也支持 `--usb`/`--network` 强制模式。
+- 自动端口转发。USB 真机路径使用 `iproxy`。
+- 无线真机路径。当前会识别 `transportType=localNetwork` 和 CoreDevice `tunnelIPAddress`，并直接通过 tunnel 访问 WDA；`--usb` 可强制回到 USB `iproxy`。
 - `wda start` 能复用已连通 WDA，端口冲突时给修复建议。
 - WDA 启动失败时返回结构化 hint，并附带 WDA/iproxy 日志摘要。
 - `doctor` 继续补充更完整的真机修复建议。

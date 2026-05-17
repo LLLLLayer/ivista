@@ -102,6 +102,7 @@ export function normalizePhysicalDevice(item) {
     pairingState: connection.pairingState,
     transportType: connection.transportType || null,
     tunnelState: connection.tunnelState || null,
+    tunnelIPAddress: connection.tunnelIPAddress || null,
     connected,
   };
 }

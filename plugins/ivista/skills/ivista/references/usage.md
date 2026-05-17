@@ -170,9 +170,9 @@ ivista wda start --device <device-udid> --signing-team <TEAMID> --wda-bundle-id 
 Real-device prerequisites:
 
 - Device is connected, unlocked, paired/trusted, and Developer Mode is enabled.
-- Wireless is supported when `ivista device list --connected` shows `transportType` as `localNetwork`; iVista will use `iproxy --network` automatically. Use `--usb` to force USB forwarding.
+- Wireless is supported when `ivista device list --connected --json` shows `transportType` as `localNetwork` and a `tunnelIPAddress`; iVista will talk to WDA through the CoreDevice tunnel directly. Use `--usb` to force USB `iproxy` forwarding.
 - Xcode can build to the device with the selected team.
-- `iproxy` is installed and available in PATH.
+- `iproxy` is installed and available in PATH for USB forwarding.
 - First launch may require a longer `--wait` because Xcode may create provisioning assets.
 
 ## Agent Workflow

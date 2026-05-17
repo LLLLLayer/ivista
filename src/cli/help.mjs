@@ -74,7 +74,7 @@ Options:
   --configuration <name>  Host iOS build configuration. Defaults to Debug.
   --signing-team <id>     Apple development team id for WDA signing.
   --wda-bundle-id <id>    Bundle id to use for WDA on a real device.
-  --network               Force network iproxy for a real device.
+  --network               Force network mode for a real device.
   --usb                   Force USB iproxy for a real device.
   --repo <url>            WDA git repository.
   --ref <ref>             WDA git ref. Defaults to ivista-wda-v0.1.1.

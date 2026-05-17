@@ -93,6 +93,16 @@ export function resolveSessionTargetId(args = {}, baseUrl = wdaBaseUrl(args)) {
   return "default";
 }
 
+export function resolveWdaBaseUrl(args = {}) {
+  if (args.baseUrl || process.env.IVISTA_WDA_BASE_URL) return wdaBaseUrl(args);
+  const fallback = wdaBaseUrl(args);
+  const wantedPort = sessionPort({ baseUrl: fallback });
+  if (!wantedPort) return fallback;
+  const matches = listSessions().filter(({ data }) => sessionPort(data) === wantedPort);
+  if (matches.length === 1 && matches[0].data.baseUrl) return matches[0].data.baseUrl;
+  return fallback;
+}
+
 export function extractSessionId(data) {
   return (
     data?.sessionId ||
@@ -111,7 +121,7 @@ export function isInvalidSessionResponse(response) {
 }
 
 export async function ensureWdaSession(args = {}) {
-  const baseUrl = wdaBaseUrl(args);
+  const baseUrl = resolveWdaBaseUrl(args);
   const targetId = resolveSessionTargetId(args, baseUrl);
   const saved = readSession(targetId);
   if (saved.sessionId && !args.forceNewSession) return { targetId, sessionId: saved.sessionId };
@@ -128,7 +138,7 @@ export async function ensureWdaSession(args = {}) {
 }
 
 export async function callWda(args, method, paths, body) {
-  const baseUrl = wdaBaseUrl(args);
+  const baseUrl = resolveWdaBaseUrl(args);
   const needsSession = paths.some((item) => item.includes(":sessionId"));
   let session = needsSession ? await ensureWdaSession(args) : null;
   const errors = [];

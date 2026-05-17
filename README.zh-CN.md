@@ -161,7 +161,7 @@ ivista app terminate --bundle-id com.example.app
 - `--port <port>`：WDA 端口，默认 `8100`。
 - `--auto-port`：自动选择可用 WDA 端口。
 - `--workspace`、`--ios-project`、`--scheme`、`--signing-team` 和 `--wda-bundle-id`：真机 WDA 签名参数。
-- `--network` 和 `--usb`：强制真机端口转发模式。默认情况下，如果 `devicectl` 返回 `transportType=localNetwork`，iVista 会使用无线转发。
+- `--network` 和 `--usb`：强制真机传输模式。默认情况下，如果 `devicectl` 返回 `transportType=localNetwork`，iVista 会使用 CoreDevice tunnel。
 - `--output <path>`：保存输出文件，目前用于截图。
 - `--duration <seconds>`：手势持续时间。
 - `--scale <number>` 和 `--velocity <number>`：缩放手势参数。
@@ -209,7 +209,7 @@ ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme M
 
 如果签名无法自动推断，可以传 `--signing-team <TEAMID>`，必要时再传 `--wda-bundle-id <bundle-id>`。
 
-无线设备可以用，前提是 Xcode/devicectl 已经能在局域网看到这台设备。iVista 会识别 `transportType=localNetwork` 并自动启动 `iproxy --network`。如果想强制走 USB，可以加 `--usb`。
+无线设备可以用，前提是 Xcode/devicectl 已经能在局域网看到这台设备，并提供 CoreDevice tunnel 地址。iVista 会识别 `transportType=localNetwork`，并直接通过这个 tunnel 访问 WDA。如果想强制走 USB `iproxy` 转发，可以加 `--usb`。
 
 ## 配置
 

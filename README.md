@@ -161,7 +161,7 @@ Useful options:
 - `--port <port>`: WDA port, defaulting to `8100`.
 - `--auto-port`: find an available WDA port automatically.
 - `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, and `--wda-bundle-id`: real-device WDA signing inputs.
-- `--network` and `--usb`: force real-device port forwarding mode. By default iVista uses network forwarding when `devicectl` reports `transportType=localNetwork`.
+- `--network` and `--usb`: force the real-device transport mode. By default iVista uses the CoreDevice tunnel when `devicectl` reports `transportType=localNetwork`.
 - `--output <path>`: save command output, currently used by screenshots.
 - `--duration <seconds>`: gesture duration.
 - `--scale <number>` and `--velocity <number>`: pinch parameters.
@@ -209,7 +209,7 @@ ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme M
 
 If signing cannot be inferred, pass `--signing-team <TEAMID>` and optionally `--wda-bundle-id <bundle-id>`.
 
-Wireless devices are supported when Xcode/devicectl already sees the device over the local network. iVista detects `transportType=localNetwork` and starts `iproxy --network` automatically. Use `--usb` to force the old USB path.
+Wireless devices are supported when Xcode/devicectl already sees the device over the local network and exposes a CoreDevice tunnel address. iVista detects `transportType=localNetwork` and talks to WDA through that tunnel directly. Use `--usb` to force USB `iproxy` forwarding.
 
 ## Configuration
 

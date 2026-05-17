@@ -50,7 +50,7 @@ export function isPortAvailable(port) {
     server.once("listening", () => {
       server.close(() => resolve(true));
     });
-    server.listen(port, "127.0.0.1");
+    server.listen(port);
   });
 }
 
@@ -174,10 +174,11 @@ export async function httpJson(method, url, body, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const payload = body === undefined ? undefined : JSON.stringify(body);
+    const hostname = parsed.hostname.replace(/^\[(.*)\]$/, "$1");
     const request = http.request(
       {
         method,
-        hostname: parsed.hostname,
+        hostname,
         port: parsed.port,
         path: `${parsed.pathname}${parsed.search}`,
         headers: payload
