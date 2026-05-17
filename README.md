@@ -40,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the latest tagged CLI from this repository:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.24
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.25
 ivista doctor
 ```
 
 Update an existing global install:
 
 ```bash
-ivista update --ref v0.1.24
+ivista update --ref v0.1.25
 ```
 
 For local development from this checkout:
@@ -161,6 +161,7 @@ Useful options:
 - `--port <port>`: WDA port, defaulting to `8100`.
 - `--auto-port`: find an available WDA port automatically.
 - `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, and `--wda-bundle-id`: real-device WDA signing inputs.
+- `--network` and `--usb`: force real-device port forwarding mode. By default iVista uses network forwarding when `devicectl` reports `transportType=localNetwork`.
 - `--output <path>`: save command output, currently used by screenshots.
 - `--duration <seconds>`: gesture duration.
 - `--scale <number>` and `--velocity <number>`: pinch parameters.
@@ -173,6 +174,8 @@ Useful options:
 ## WebDriverAgent Management
 
 iVista manages WebDriverAgent automatically. Users should not clone WDA manually for the default path.
+
+`ivista wda start` is stateful: it first checks whether WDA is already reachable on the requested port and reuses it when possible. If the port is occupied by something else, it returns a fix hint instead of waiting on a doomed `xcodebuild`.
 
 Defaults:
 
@@ -196,6 +199,17 @@ Use `--wda-path` for offline work, enterprise forks, or debugging WDA itself:
 ```bash
 ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
 ```
+
+For real devices, run from the host iOS project when possible so iVista can infer signing:
+
+```bash
+ivista device list --connected
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+```
+
+If signing cannot be inferred, pass `--signing-team <TEAMID>` and optionally `--wda-bundle-id <bundle-id>`.
+
+Wireless devices are supported when Xcode/devicectl already sees the device over the local network. iVista detects `transportType=localNetwork` and starts `iproxy --network` automatically. Use `--usb` to force the old USB path.
 
 ## Configuration
 

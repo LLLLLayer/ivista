@@ -9,6 +9,8 @@ const booleanOptions = new Set([
   "auto-port",
   "connected",
   "real-device",
+  "network",
+  "usb",
   "allow-provisioning-updates",
 ]);
 

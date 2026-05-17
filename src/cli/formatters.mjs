@@ -112,12 +112,14 @@ function printDeviceList(payload) {
   console.log("");
   const nameWidth = Math.max(...devices.map((device) => String(device.name || "").length), 4);
   const stateWidth = Math.max(...devices.map((device) => (device.connected ? "connected" : "offline").length), 7);
+  const transportWidth = Math.max(...devices.map((device) => String(device.transportType || "unknown").length), 9);
   devices.forEach((device, index) => {
     const number = `${index + 1}.`.padStart(String(devices.length).length + 1);
     const state = (device.connected ? "connected" : "offline").padEnd(stateWidth);
     const name = String(device.name || "").padEnd(nameWidth);
+    const transport = String(device.transportType || "unknown").padEnd(transportWidth);
     const os = device.osVersion ? ` iOS ${device.osVersion}` : "";
-    console.log(`${number}  ${state}  ${name}  ${device.udid}${os}`);
+    console.log(`${number}  ${state}  ${transport}  ${name}  ${device.udid}${os}`);
   });
 }
 
@@ -148,20 +150,38 @@ function printWdaStart(payload) {
     console.log("WDA did not become ready.");
     if (payload.error) console.log(`error: ${payload.error}`);
     if (payload.hint) console.log(`hint: ${payload.hint}`);
+    for (const check of payload.checks || []) {
+      console.log(`[FAIL] ${check.name}`);
+      if (check.hint) console.log(`       ${check.hint}`);
+    }
+    for (const hint of payload.hints || []) {
+      if (hint !== payload.hint) console.log(`hint: ${hint}`);
+    }
     if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
     if (payload.baseUrl) console.log(`url: ${payload.baseUrl}`);
+    const diagnosticLogs = payload.diagnostics?.logs || [];
+    if (diagnosticLogs.length > 0) {
+      console.log("");
+      console.log("Last log lines:");
+      for (const item of diagnosticLogs.slice(0, 2)) {
+        console.log(`--- ${asPath(item.logPath)} ---`);
+        console.log(item.tail.split("\n").slice(-12).join("\n"));
+      }
+    }
     return;
   }
-  console.log("WDA is running.");
+  console.log(payload.reused ? "WDA is already running." : "WDA is running.");
   console.log(`url: ${payload.baseUrl}`);
   if (payload.targetType) console.log(`target: ${payload.targetType}`);
   if (payload.device?.name) console.log(`device: ${payload.device.name}`);
+  if (payload.simulator?.name) console.log(`simulator: ${payload.simulator.name}`);
   if (payload.port) console.log(`port: ${payload.port}`);
   if (payload.pid) console.log(`pid: ${payload.pid}`);
   if (payload.proxyPid) console.log(`proxy pid: ${payload.proxyPid}`);
   if (payload.logPath) console.log(`log: ${asPath(payload.logPath)}`);
   if (payload.proxyLogPath) console.log(`proxy log: ${asPath(payload.proxyLogPath)}`);
   if (payload.signing?.wdaBundleId) console.log(`wda bundle id: ${payload.signing.wdaBundleId}`);
+  if (payload.signing?.transportType) console.log(`transport: ${payload.signing.transportType}`);
 }
 
 function printWdaStop(payload) {

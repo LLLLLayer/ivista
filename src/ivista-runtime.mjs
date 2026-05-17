@@ -137,6 +137,8 @@ export const tools = {
         port: { type: "number" },
         devicePort: { type: "number" },
         autoPort: { type: "boolean" },
+        network: { type: "boolean" },
+        usb: { type: "boolean" },
         allowProvisioningUpdates: { type: "boolean" },
         waitMs: { type: "number" },
         timeoutMs: { type: "number" },

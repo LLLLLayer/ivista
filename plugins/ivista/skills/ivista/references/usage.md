@@ -107,7 +107,7 @@ Start by discovering the device:
 ivista device list --connected
 ```
 
-Then inspect the current project directory:
+Then inspect the current project directory when the target project is not obvious. The CLI can also infer a single nearby `.xcworkspace` or `.xcodeproj` from the current directory or a parent directory.
 
 ```bash
 find . -maxdepth 2 \( -name "*.xcworkspace" -o -name "*.xcodeproj" \)
@@ -159,6 +159,8 @@ ivista wda start \
   --wait 180000
 ```
 
+`ivista wda start` reuses an already reachable WDA on the requested port. If the port is occupied by something else, prefer retrying with `--auto-port` or running `ivista wda stop`.
+
 If project introspection fails but the team id is known, pass it explicitly:
 
 ```bash
@@ -168,6 +170,7 @@ ivista wda start --device <device-udid> --signing-team <TEAMID> --wda-bundle-id 
 Real-device prerequisites:
 
 - Device is connected, unlocked, paired/trusted, and Developer Mode is enabled.
+- Wireless is supported when `ivista device list --connected` shows `transportType` as `localNetwork`; iVista will use `iproxy --network` automatically. Use `--usb` to force USB forwarding.
 - Xcode can build to the device with the selected team.
 - `iproxy` is installed and available in PATH.
 - First launch may require a longer `--wait` because Xcode may create provisioning assets.

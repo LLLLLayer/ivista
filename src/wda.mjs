@@ -8,6 +8,7 @@ import {
   ensureDir,
   findAvailablePort,
   httpJson,
+  isPortAvailable,
   ivistaHome,
   jsonText,
   runCommand,
@@ -23,6 +24,130 @@ import {
   toolSimulatorBoot,
   wdaBundleIdFromSigning,
 } from "./devices.mjs";
+
+function parseToolJson(result) {
+  return JSON.parse(result.content[0].text);
+}
+
+async function probeWda(baseUrl, timeoutMs = 3000) {
+  try {
+    const status = await httpJson("GET", `${baseUrl}/status`, undefined, timeoutMs);
+    return {
+      reachable: status.statusCode >= 200 && status.statusCode < 300,
+      status,
+      error: null,
+    };
+  } catch (error) {
+    return { reachable: false, status: null, error: error.message };
+  }
+}
+
+function isProcessAlive(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readLogTail(logPath, maxLines = 80) {
+  if (!logPath) return "";
+  try {
+    return fs.readFileSync(logPath, "utf8").split(/\r?\n/).slice(-maxLines).join("\n").trim();
+  } catch {
+    return "";
+  }
+}
+
+function diagnoseWdaText(text) {
+  const hints = [];
+  if (/Address already in use|port .* already in use|Failed to bind/i.test(text)) {
+    hints.push("Port is busy. Run `ivista wda stop` or retry with `ivista wda start --auto-port`.");
+  }
+  if (/requires a development team|DEVELOPMENT_TEAM|No signing certificate|Code signing is required|Signing for .* requires/i.test(text)) {
+    hints.push("WDA signing failed. Pass `--signing-team <TEAMID>` or run from an iOS app project so iVista can infer signing.");
+  }
+  if (/No profiles for|provisioning profile|allowProvisioningUpdates/i.test(text)) {
+    hints.push("Provisioning failed. Keep `--allow-provisioning-updates` enabled and make sure the Apple account can create profiles for the WDA bundle id.");
+  }
+  if (/Unable to find a destination|Ineligible destinations|not registered for development|device.*not available/i.test(text)) {
+    hints.push("Xcode could not use the target device. Unlock it, trust this Mac, enable Developer Mode, and reconnect USB.");
+  }
+  if (/Developer Mode/i.test(text)) {
+    hints.push("Developer Mode is required on physical iOS devices.");
+  }
+  if (/WebDriverAgentRunner.*crash|Early unexpected exit|Test runner exited|UITestingUITests/i.test(text)) {
+    hints.push("WDA runner crashed. Stop the old runner, then retry; if it repeats, inspect the WDA log and Simulator crash report.");
+  }
+  return [...new Set(hints)];
+}
+
+function collectWdaDiagnostics(paths) {
+  const logs = paths
+    .filter(Boolean)
+    .map((logPath) => ({ logPath, tail: readLogTail(logPath) }))
+    .filter((item) => item.tail);
+  const hints = [...new Set(logs.flatMap((item) => diagnoseWdaText(item.tail)))];
+  return { hints, logs };
+}
+
+function devicePreflightIssues(device) {
+  const issues = [];
+  if (device.developerModeStatus && device.developerModeStatus !== "enabled") {
+    issues.push({
+      name: "Developer Mode is not enabled",
+      hint: "Enable Developer Mode on the iPhone/iPad, then reconnect it.",
+    });
+  }
+  if (device.pairingState && device.pairingState !== "paired") {
+    issues.push({
+      name: "Device is not paired with this Mac",
+      hint: "Unlock the device, tap Trust This Computer, then reconnect it.",
+    });
+  }
+  return issues;
+}
+
+function iproxyArgsForDevice(device, args, selectedPort, devicePort) {
+  const proxyArgs = ["-u", device.udid];
+  const useNetwork = args.network || (!args.usb && device.transportType === "localNetwork");
+  if (useNetwork) proxyArgs.push("-n");
+  if (args.usb) proxyArgs.push("-l");
+  proxyArgs.push(`${selectedPort}:${devicePort}`);
+  return proxyArgs;
+}
+
+async function reuseReachableWda({ targetType, target, baseUrl, port, progressLine }) {
+  const probe = await probeWda(baseUrl);
+  if (!probe.reachable) return null;
+  const sessions = listSessions();
+  const matchesTarget = (data) => targetType === "device"
+    ? data.device?.udid === target.udid || data.device?.name === target.name
+    : data.simulator?.udid === target.udid || data.simulator?.name === target.name;
+  const targetSession = sessions.find(({ data }) => matchesTarget(data))?.data || null;
+  const portSession = sessions.find(({ data }) => data.baseUrl === baseUrl || sessionPort(data) === port)?.data || null;
+  if (portSession && !matchesTarget(portSession)) return null;
+  const targetSessionMatchesUrl = targetSession && (targetSession.baseUrl === baseUrl || sessionPort(targetSession) === port);
+  const existing = portSession || (targetSessionMatchesUrl ? targetSession : {}) || {};
+  progressLine(`Reusing reachable WDA at ${baseUrl}`);
+  return jsonText({
+    ok: true,
+    reused: true,
+    targetType,
+    ...(targetType === "device" ? { device: target } : { simulator: target }),
+    baseUrl,
+    port,
+    devicePort: existing.devicePort || null,
+    pid: existing.pid || null,
+    proxyPid: existing.proxyPid || null,
+    logPath: existing.logPath || null,
+    proxyLogPath: existing.proxyLogPath || null,
+    signing: existing.signing || null,
+    status: probe.status.data,
+  });
+}
 
 export async function toolWdaPrepare(args = {}) {
   const cfg = wdaConfig(args);
@@ -47,7 +172,9 @@ export async function toolWdaPrepare(args = {}) {
     path: cfg.cachePath,
     preparedAt: new Date().toISOString(),
   };
-  fs.writeFileSync(path.join(cfg.cachePath, ".ivista-cache.json"), JSON.stringify(metadata, null, 2));
+  if (!args.wdaPath) {
+    fs.writeFileSync(path.join(cfg.cachePath, ".ivista-cache.json"), JSON.stringify(metadata, null, 2));
+  }
   return jsonText({ ok: true, ...metadata });
 }
 
@@ -72,30 +199,88 @@ export async function toolWdaStartDevice(args = {}) {
   const { device, inferred } = await resolvePhysicalDevice(args);
   if (inferred) progressLine(`Using connected iOS device: ${device.name} (${device.udid})`);
 
+  const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
+  const requestedBaseUrl = `http://127.0.0.1:${requestedPort}`;
+  const alreadyRunning = await reuseReachableWda({
+    targetType: "device",
+    target: device,
+    baseUrl: requestedBaseUrl,
+    port: requestedPort,
+    progressLine,
+  });
+  if (alreadyRunning) return alreadyRunning;
+  if (!args.autoPort && !await isPortAvailable(requestedPort)) {
+    return jsonText({
+      ok: false,
+      targetType: "device",
+      device,
+      baseUrl: requestedBaseUrl,
+      port: requestedPort,
+      error: `Port ${requestedPort} is already in use, but WDA is not reachable there.`,
+      hint: "Run `ivista wda stop` or retry with `ivista wda start --auto-port`.",
+      hints: ["Run `ivista wda stop`.", "Retry with `ivista wda start --auto-port`."],
+    });
+  }
+
   if (!await commandExists("iproxy")) {
-    throw new Error("iproxy is required for real-device WDA. Install libimobiledevice/usbmuxd, for example: `brew install libimobiledevice`.");
+    return jsonText({
+      ok: false,
+      targetType: "device",
+      device,
+      error: "iproxy is required for real-device WDA.",
+      hint: "Install libimobiledevice with `brew install libimobiledevice`, then retry.",
+      hints: ["Install libimobiledevice with `brew install libimobiledevice`."],
+    });
+  }
+
+  const preflightIssues = devicePreflightIssues(device);
+  if (preflightIssues.length > 0) {
+    return jsonText({
+      ok: false,
+      targetType: "device",
+      device,
+      error: "iOS device is not ready for WDA.",
+      hint: preflightIssues[0].hint,
+      checks: preflightIssues,
+    });
   }
 
   const prepared = await toolWdaPrepare(args);
-  const preparedJson = JSON.parse(prepared.content[0].text);
+  const preparedJson = parseToolJson(prepared);
   if (!preparedJson.ok) return prepared;
 
-  const signing = args.signingTeam
-    ? {
-        developmentTeam: args.signingTeam,
-        bundleId: args.hostBundleId || "com.ivista.host",
-        containerType: null,
-        containerPath: null,
-        scheme: args.scheme || null,
-        configuration: args.configuration || "Debug",
-      }
-    : await resolveHostSigning(args);
+  let signing;
+  try {
+    signing = args.signingTeam
+      ? {
+          developmentTeam: args.signingTeam,
+          bundleId: args.hostBundleId || "com.ivista.host",
+          containerType: null,
+          containerPath: null,
+          scheme: args.scheme || null,
+          configuration: args.configuration || "Debug",
+        }
+      : await resolveHostSigning(args);
+  } catch (error) {
+    return jsonText({
+      ok: false,
+      targetType: "device",
+      device,
+      error: error.message,
+      hint: "Run iVista from an iOS app project, or pass `--ios-project/--workspace --scheme`, or pass `--signing-team <TEAMID>`.",
+      hints: [
+        "Run from the app project directory so iVista can infer signing.",
+        "Or pass `--ios-project <path> --scheme <scheme>`.",
+        "Or pass `--signing-team <TEAMID> --wda-bundle-id <bundle-id>`.",
+      ],
+    });
+  }
   const wdaBundleId = wdaBundleIdFromSigning(signing, args);
 
-  const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
   const selectedPort = args.autoPort ? await findAvailablePort(requestedPort) : requestedPort;
   const port = String(selectedPort);
   const devicePort = String(args.devicePort || selectedPort);
+  const baseUrl = `http://127.0.0.1:${port}`;
   const logDir = path.join(ivistaHome(), "logs");
   ensureDir(logDir);
   const stamp = Date.now();
@@ -119,12 +304,13 @@ export async function toolWdaStartDevice(args = {}) {
 
   progressLine(`Signing WDA with team: ${signing.developmentTeam}`);
   progressLine(`WDA bundle id: ${wdaBundleId}`);
-  progressLine(`Starting iproxy ${selectedPort}:${devicePort}...`);
-  const proxy = spawnDetached("iproxy", ["-u", device.udid, `${selectedPort}:${devicePort}`], { logDir, logPath: proxyLogPath });
+  const proxyArgs = iproxyArgsForDevice(device, args, selectedPort, devicePort);
+  const proxyMode = proxyArgs.includes("-n") ? "network" : "usb";
+  progressLine(`Starting iproxy ${selectedPort}:${devicePort} (${proxyMode})...`);
+  const proxy = spawnDetached("iproxy", proxyArgs, { logDir, logPath: proxyLogPath });
   progressLine("Starting WebDriverAgent with xcodebuild...");
   progressLine(`Log: ${wdaLogPath}`);
   const spawned = spawnDetached("xcodebuild", xcodeArgs, { cwd: preparedJson.path, logDir, logPath: wdaLogPath });
-  const baseUrl = `http://127.0.0.1:${port}`;
   writeSession(device.udid, {
     targetType: "device",
     device,
@@ -135,6 +321,7 @@ export async function toolWdaStartDevice(args = {}) {
       scheme: signing.scheme || null,
       configuration: signing.configuration || null,
       containerPath: signing.containerPath || null,
+      transportType: device.transportType || null,
     },
     baseUrl,
     port: selectedPort,
@@ -166,16 +353,21 @@ export async function toolWdaStartDevice(args = {}) {
           proxyPid: proxy.pid,
           logPath: spawned.logPath,
           proxyLogPath: proxy.logPath,
-          signing: {
-            developmentTeam: signing.developmentTeam,
-            hostBundleId: signing.bundleId,
-            wdaBundleId,
-          },
+	      signing: {
+	        developmentTeam: signing.developmentTeam,
+	        hostBundleId: signing.bundleId,
+	        wdaBundleId,
+	        transportType: device.transportType || null,
+	      },
           status: status.data,
         });
       }
     } catch (error) {
       lastError = error.message;
+    }
+    if (!isProcessAlive(spawned.pid)) {
+      lastError = "xcodebuild exited before WDA became reachable.";
+      break;
     }
     if (progress && Date.now() >= nextProgressAt) {
       const elapsed = Math.round((Date.now() - startedWaitingAt) / 1000);
@@ -186,6 +378,7 @@ export async function toolWdaStartDevice(args = {}) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
   if (progress) process.stderr.write("\n");
+  const diagnostics = collectWdaDiagnostics([wdaLogPath, proxyLogPath]);
   return jsonText({
     ok: false,
     targetType: "device",
@@ -197,13 +390,16 @@ export async function toolWdaStartDevice(args = {}) {
     proxyPid: proxy.pid,
     logPath: spawned.logPath,
     proxyLogPath: proxy.logPath,
-    signing: {
-      developmentTeam: signing.developmentTeam,
-      hostBundleId: signing.bundleId,
-      wdaBundleId,
-    },
+	signing: {
+	  developmentTeam: signing.developmentTeam,
+	  hostBundleId: signing.bundleId,
+	  wdaBundleId,
+	  transportType: device.transportType || null,
+	},
     error: lastError || "Timed out waiting for real-device WDA /status.",
-    hint: "Unlock the device, trust this Mac, keep Developer Mode enabled, then check the WDA and iproxy logs.",
+    hint: diagnostics.hints[0] || "Unlock the device, trust this Mac, keep Developer Mode enabled, then check the WDA and iproxy logs.",
+    hints: diagnostics.hints,
+    diagnostics,
   });
 }
 
@@ -216,20 +412,41 @@ export async function toolWdaStartSimulator(args = {}) {
   progressLine("Preparing Simulator and WDA...");
   const { device, inferred } = await resolveWdaSimulator(args);
   if (inferred) progressLine(`Using booted Simulator: ${device.name} (${device.udid})`);
+  const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
+  const requestedBaseUrl = `http://127.0.0.1:${requestedPort}`;
+  const alreadyRunning = await reuseReachableWda({
+    targetType: "simulator",
+    target: device,
+    baseUrl: requestedBaseUrl,
+    port: requestedPort,
+    progressLine,
+  });
+  if (alreadyRunning) return alreadyRunning;
+  if (!args.autoPort && !await isPortAvailable(requestedPort)) {
+    return jsonText({
+      ok: false,
+      targetType: "simulator",
+      simulator: device,
+      baseUrl: requestedBaseUrl,
+      port: requestedPort,
+      error: `Port ${requestedPort} is already in use, but WDA is not reachable there.`,
+      hint: "Run `ivista wda stop` or retry with `ivista wda start --auto-port`.",
+      hints: ["Run `ivista wda stop`.", "Retry with `ivista wda start --auto-port`."],
+    });
+  }
   if (device.state !== "Booted") {
     progressLine(`Booting Simulator: ${device.name}`);
     const bootResult = await toolSimulatorBoot({ ...args, simulator: device.udid });
-    const bootText = bootResult.content[0].text;
-    const bootJson = JSON.parse(bootText);
+    const bootJson = parseToolJson(bootResult);
     if (!bootJson.ok) return bootResult;
   }
   const prepared = await toolWdaPrepare(args);
-  const preparedJson = JSON.parse(prepared.content[0].text);
+  const preparedJson = parseToolJson(prepared);
   if (!preparedJson.ok) return prepared;
 
-  const requestedPort = Number(args.port || process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
   const selectedPort = args.autoPort ? await findAvailablePort(requestedPort) : requestedPort;
   const port = String(selectedPort);
+  const baseUrl = `http://127.0.0.1:${port}`;
   const logDir = path.join(ivistaHome(), "logs");
   ensureDir(logDir);
   const logPath = path.join(logDir, `wda-simulator-${device.udid}-${Date.now()}.log`);
@@ -247,7 +464,6 @@ export async function toolWdaStartSimulator(args = {}) {
   progressLine(`Starting WebDriverAgent with xcodebuild...`);
   progressLine(`Log: ${logPath}`);
   const spawned = spawnDetached("xcodebuild", xcodeArgs, { cwd: preparedJson.path, logDir, logPath });
-  const baseUrl = `http://127.0.0.1:${port}`;
   writeSession(device.udid, {
     targetType: "simulator",
     simulator: device,
@@ -279,6 +495,10 @@ export async function toolWdaStartSimulator(args = {}) {
     } catch (error) {
       lastError = error.message;
     }
+    if (!isProcessAlive(spawned.pid)) {
+      lastError = "xcodebuild exited before WDA became reachable.";
+      break;
+    }
     if (progress && Date.now() >= nextProgressAt) {
       const elapsed = Math.round((Date.now() - startedWaitingAt) / 1000);
       const remaining = Math.max(0, Math.round((deadline - Date.now()) / 1000));
@@ -288,6 +508,7 @@ export async function toolWdaStartSimulator(args = {}) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
   if (progress) process.stderr.write("\n");
+  const diagnostics = collectWdaDiagnostics([logPath]);
   return jsonText({
     ok: false,
     baseUrl,
@@ -295,7 +516,9 @@ export async function toolWdaStartSimulator(args = {}) {
     pid: spawned.pid,
     logPath: spawned.logPath,
     error: lastError || "Timed out waiting for WDA /status.",
-    hint: "If WebDriverAgentRunner crashed or the port is busy, try `ivista wda stop` and then `ivista wda start --auto-port`.",
+    hint: diagnostics.hints[0] || "If WebDriverAgentRunner crashed or the port is busy, try `ivista wda stop` and then `ivista wda start --auto-port`.",
+    hints: diagnostics.hints,
+    diagnostics,
   });
 }
 

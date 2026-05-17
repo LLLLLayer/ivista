@@ -187,6 +187,22 @@ export function findXcodeContainers(cwd = process.cwd()) {
   };
 }
 
+export function findNearestXcodeContainers(cwd = process.cwd()) {
+  let current = path.resolve(cwd);
+  const home = os.homedir();
+  while (true) {
+    const containers = findXcodeContainers(current);
+    if (containers.workspaces.length > 0 || containers.projects.length > 0) {
+      return { ...containers, directory: current };
+    }
+    const parent = path.dirname(current);
+    if (parent === current || current === home) {
+      return { workspaces: [], projects: [], directory: cwd };
+    }
+    current = parent;
+  }
+}
+
 export async function inferXcodeScheme(containerArgs, timeoutMs = 30000) {
   const result = await runCommand("xcodebuild", ["-list", "-json", ...containerArgs], {
     cwd: process.cwd(),
@@ -215,7 +231,7 @@ export async function resolveHostSigning(args = {}) {
     containerType = "project";
     containerArgs = ["-project", containerPath];
   } else {
-    const containers = findXcodeContainers(process.cwd());
+    const containers = findNearestXcodeContainers(process.cwd());
     if (containers.workspaces.length === 1) {
       containerPath = containers.workspaces[0];
       containerType = "workspace";
@@ -227,7 +243,7 @@ export async function resolveHostSigning(args = {}) {
     } else if (containers.workspaces.length > 1 || containers.projects.length > 1) {
       throw new Error("Multiple Xcode projects/workspaces found. Pass --ios-project or --workspace.");
     } else {
-      throw new Error("No Xcode project/workspace found. Run from an iOS project or pass --ios-project/--workspace.");
+      throw new Error("No Xcode project/workspace found. Run from an iOS project directory or pass --ios-project/--workspace.");
     }
   }
 

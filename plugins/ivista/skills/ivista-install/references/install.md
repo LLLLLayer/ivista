@@ -25,7 +25,7 @@ If `ivista doctor` reports issues, prefer following its fix hints before attempt
 Install the released CLI from the GitHub npm package source:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.24
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.25
 ```
 
 For local development from a checked-out repo:
@@ -135,7 +135,7 @@ Explain that `rm -rf` recursively deletes the target path without prompting, so 
 
 ## Common Repair Hints
 
-- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.24`.
+- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.25`.
 - Old version: run `ivista update`.
 - Xcode tools missing: install or select Xcode, then rerun `ivista doctor`.
 - Real device missing: unlock the device, trust this Mac, enable Developer Mode, reconnect USB, then run `ivista device list --connected`.

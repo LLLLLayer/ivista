@@ -40,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 从仓库安装最新 tag：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.24
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.25
 ivista doctor
 ```
 
 更新已有的全局安装：
 
 ```bash
-ivista update --ref v0.1.24
+ivista update --ref v0.1.25
 ```
 
 本地开发安装：
@@ -161,6 +161,7 @@ ivista app terminate --bundle-id com.example.app
 - `--port <port>`：WDA 端口，默认 `8100`。
 - `--auto-port`：自动选择可用 WDA 端口。
 - `--workspace`、`--ios-project`、`--scheme`、`--signing-team` 和 `--wda-bundle-id`：真机 WDA 签名参数。
+- `--network` 和 `--usb`：强制真机端口转发模式。默认情况下，如果 `devicectl` 返回 `transportType=localNetwork`，iVista 会使用无线转发。
 - `--output <path>`：保存输出文件，目前用于截图。
 - `--duration <seconds>`：手势持续时间。
 - `--scale <number>` 和 `--velocity <number>`：缩放手势参数。
@@ -173,6 +174,8 @@ ivista app terminate --bundle-id com.example.app
 ## WebDriverAgent 管理
 
 iVista 默认自动管理 WebDriverAgent。普通用户不需要手动 clone WDA。
+
+`ivista wda start` 是有状态的：它会先检查目标端口上是否已经有可用 WDA，可以用就直接复用。如果端口被其他进程占用，它会直接返回修复建议，而不是继续等一个注定失败的 `xcodebuild`。
 
 默认值：
 
@@ -196,6 +199,17 @@ ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivi
 ```bash
 ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
 ```
+
+真机建议在宿主 iOS App 项目目录下运行，这样 iVista 可以自动推断签名：
+
+```bash
+ivista device list --connected
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+```
+
+如果签名无法自动推断，可以传 `--signing-team <TEAMID>`，必要时再传 `--wda-bundle-id <bundle-id>`。
+
+无线设备可以用，前提是 Xcode/devicectl 已经能在局域网看到这台设备。iVista 会识别 `transportType=localNetwork` 并自动启动 `iproxy --network`。如果想强制走 USB，可以加 `--usb`。
 
 ## 配置
 
