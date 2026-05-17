@@ -83,8 +83,13 @@ export function normalizePhysicalDevice(item) {
   const properties = item.deviceProperties || {};
   const connection = item.connectionProperties || {};
   const capabilities = (item.capabilities || []).map((capability) => capability.featureIdentifier);
-  const connected = capabilities.includes("com.apple.coredevice.feature.connectdevice")
-    && connection.tunnelState !== "unavailable";
+  const hasUsableCapabilities = capabilities.includes("com.apple.coredevice.feature.disconnectdevice")
+    || capabilities.includes("com.apple.coredevice.feature.installapp")
+    || capabilities.includes("com.apple.coredevice.feature.launchapplication");
+  const tunnelConnected = connection.tunnelState === "connected";
+  const connected = connection.pairingState === "paired"
+    && connection.tunnelState !== "unavailable"
+    && (tunnelConnected || hasUsableCapabilities);
   return {
     name: properties.name || hardware.marketingName || item.identifier,
     udid: hardware.udid,

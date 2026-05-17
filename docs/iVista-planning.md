@@ -659,6 +659,24 @@ steps:
 
 这个阶段可以先使用已经运行的 WDA 做内部验证，但不能把“用户手动准备 WDA”作为对外产品路径。
 
+当前已知状态：
+
+- Xcode 能通过 CoreDevice 发现真机、签名、安装并启动 `iVista-Runner`。
+- USB 重新连接并被 `libimobiledevice` 识别后，`idevice_id -l` 可以看到真机 UDID。
+- 使用 `ivista wda start --device <udid> --usb --port 8206 --wait 180000` 已验证可以启动真机 WDA。
+- `ivista wda status --port 8206`、`ivista screen shot --port 8206` 和 `ivista device info --port 8206` 已在真机上跑通。
+- 当前 CLI 曾把已连接设备误判为 `offline`，原因是连接成功时 CoreDevice 暴露的是 `disconnectdevice/installapp/launchapplication` 能力，而不是 `connectdevice`。该判断已在本地开发版本修正。
+- 暂不要求用户升级 Xcode。后续再单独验证当前 Xcode 版本与目标 iOS 系统版本的兼容性，特别是 iOS 版本高于本机 Xcode 明确支持范围时的 DeviceSupport/CoreDevice 行为。
+
+TODO：
+
+- 发布 `device list --connected` 的真机连接判断修复，优先参考 `devicectl` 的 `pairingState`、`transportType`、`tunnelState` 和可用能力。
+- 修正 `--auto-port` 的端口可用性判断，避免 IPv6 或已有 `iproxy` 监听导致误判。
+- 在 `wda start --device` 失败时区分三类问题：签名/安装失败、WDA Runner 未启动、端口转发失败。
+- 如果 `devicectl` 可见但 `idevice_id -l` 看不到设备，输出明确 fix hint，提示用户重新插线、解锁、信任此电脑，或检查 usbmuxd/libimobiledevice。
+- 无线真机路径仍需单独验证。后续调研 CoreDevice-native 端口转发或其它真机转发方案，减少对 `iproxy --network` 的依赖。
+- 后续再处理 Xcode/iOS 版本兼容性验证；当前不把升级 Xcode 作为继续开发的前置条件。
+
 交付：
 
 - CLI 能发现真机。
