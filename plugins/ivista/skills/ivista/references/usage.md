@@ -17,6 +17,13 @@ ivista wda status --port <port>
 
 Start a run before operating the device whenever possible. If the agent cannot access a real conversation id, use a stable task name. iVista stores screenshots, source, texts, and command events under `~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/`.
 
+At the end of a flow, export the run when the user wants a report or shareable debug bundle:
+
+```bash
+ivista run export --format markdown
+ivista run export --format zip
+```
+
 If there is already a booted Simulator:
 
 ```bash

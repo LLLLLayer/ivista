@@ -1,6 +1,6 @@
 import { toolDoctor } from "./doctor.mjs";
 import { toolDeviceList, toolSimulatorBoot, toolSimulatorList } from "./devices.mjs";
-import { toolRunCurrent, toolRunStart } from "./runs.mjs";
+import { toolRunCurrent, toolRunExport, toolRunStart } from "./runs.mjs";
 import {
   toolWdaCacheStatus,
   toolWdaPrepare,
@@ -74,6 +74,17 @@ export const tools = {
       },
     },
     handler: toolRunCurrent,
+  },
+  ivista_run_export: {
+    description: "Export the current iVista run as a Markdown report or zip archive.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        format: { type: "string", enum: ["markdown", "md", "zip"] },
+        output: { type: "string" },
+      },
+    },
+    handler: toolRunExport,
   },
   ivista_doctor: {
     description: "Check local Xcode, simctl, git, iVista cache, and WDA configuration.",

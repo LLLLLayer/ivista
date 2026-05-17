@@ -29,6 +29,7 @@ ivista doctor
 - `ivista doctor`
 - `ivista run start`
 - `ivista run current`
+- `ivista run export`
 - `ivista simulator list`
 - `ivista simulator boot`
 - `ivista wda cache status`

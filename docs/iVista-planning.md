@@ -204,6 +204,7 @@ ivista wda status [--port 8100]
 ```bash
 ivista run start [--project .] [--conversation <id>] [--run <id>]
 ivista run current
+ivista run export [--format markdown|zip]
 ivista screen shot [--port 8100] [--output /tmp/ivista.png] [--json]
 ivista screen source [--port 8100] [--json]
 ivista screen texts [--port 8100] [--json]

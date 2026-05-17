@@ -2,6 +2,7 @@ export const commandMap = new Map([
   ["doctor", "ivista_doctor"],
   ["run start", "ivista_run_start"],
   ["run current", "ivista_run_current"],
+  ["run export", "ivista_run_export"],
   ["simulator list", "ivista_simulator_list"],
   ["simulator boot", "ivista_simulator_boot"],
   ["device list", "ivista_device_list"],

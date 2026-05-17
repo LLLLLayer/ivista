@@ -31,6 +31,17 @@ function readJson(file, fallback = null) {
   }
 }
 
+function readNdjson(file) {
+  try {
+    return fs.readFileSync(file, "utf8")
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch {
+    return [];
+  }
+}
+
 function writeJson(file, value) {
   ensureDir(path.dirname(file));
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
@@ -41,6 +52,15 @@ function execGit(args, cwd) {
     return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   } catch {
     return "";
+  }
+}
+
+function execTool(command, args, cwd = process.cwd()) {
+  try {
+    execFileSync(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -206,6 +226,140 @@ export function summarizeResult(payload) {
   return summary;
 }
 
+function markdownEscape(value) {
+  return String(value ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+function relativeLink(fromDir, file) {
+  return path.relative(fromDir, file).split(path.sep).join("/");
+}
+
+function eventDescription(event, reportDir) {
+  if (event.type === "artifact") {
+    const artifact = event.artifact;
+    const link = artifact?.path ? `[${path.basename(artifact.path)}](${relativeLink(reportDir, artifact.path)})` : "";
+    return `artifact ${event.kind}${link ? ` ${link}` : ""}`;
+  }
+  if (event.type === "command") {
+    const pieces = [`command \`${event.command}\``];
+    const artifact = event.result?.artifact;
+    if (artifact?.path) pieces.push(`[artifact](${relativeLink(reportDir, artifact.path)})`);
+    if (event.result?.output) pieces.push(`output \`${event.result.output}\``);
+    if (event.result?.selector) pieces.push(`selector \`${JSON.stringify(event.result.selector)}\``);
+    if (event.result?.error) pieces.push(`error: ${event.result.error}`);
+    return pieces.join(" ");
+  }
+  return event.type;
+}
+
+export function buildRunMarkdown(ctx, outputPath) {
+  const reportDir = path.dirname(outputPath);
+  const events = readNdjson(ctx.run.eventsPath);
+  const artifactEvents = events.filter((event) => event.type === "artifact");
+  const commandEvents = events.filter((event) => event.type === "command");
+  const lines = [
+    "# iVista Run Report",
+    "",
+    "## Summary",
+    "",
+    `- Project: ${ctx.project.name || ctx.project.projectKey}`,
+    `- Project key: ${ctx.project.projectKey}`,
+    `- Project root: ${ctx.project.root}`,
+    `- Git remote: ${ctx.project.gitRemote || "n/a"}`,
+    `- Branch: ${ctx.project.branch || "n/a"}`,
+    `- Conversation: ${ctx.conversation.conversationId}`,
+    `- Run: ${ctx.run.runId}`,
+    `- Created: ${ctx.run.createdAt}`,
+    `- Updated: ${ctx.run.updatedAt}`,
+    "",
+    "## Artifacts",
+    "",
+  ];
+  if (artifactEvents.length === 0) {
+    lines.push("No artifacts captured.", "");
+  } else {
+    lines.push("| Time | Kind | File |", "| --- | --- | --- |");
+    for (const event of artifactEvents) {
+      const artifact = event.artifact || {};
+      const link = artifact.path ? `[${markdownEscape(path.basename(artifact.path))}](${relativeLink(reportDir, artifact.path)})` : "";
+      lines.push(`| ${markdownEscape(event.ts)} | ${markdownEscape(event.kind)} | ${link} |`);
+    }
+    lines.push("");
+  }
+  lines.push("## Timeline", "");
+  if (events.length === 0) {
+    lines.push("No events recorded.", "");
+  } else {
+    for (const event of events) {
+      lines.push(`- ${event.ts} - ${eventDescription(event, reportDir)}`);
+    }
+    lines.push("");
+  }
+  lines.push("## Commands", "");
+  if (commandEvents.length === 0) {
+    lines.push("No commands recorded.", "");
+  } else {
+    for (const event of commandEvents) {
+      lines.push(`### ${event.ts} - ${event.command}`, "");
+      lines.push("```json", JSON.stringify({ args: event.args, result: event.result }, null, 2), "```", "");
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function defaultExportPath(ctx, format) {
+  const extension = format === "zip" ? "zip" : "md";
+  return path.join(ctx.conversation.dir, "exports", `ivista-run-${ctx.run.runId}.${extension}`);
+}
+
+export function exportRun(args = {}) {
+  const ctx = currentRun({ create: false });
+  if (!ctx.ok) return ctx;
+  const format = String(args.format || "markdown").toLowerCase();
+  if (!["markdown", "md", "zip"].includes(format)) {
+    return { ok: false, error: `Unsupported export format: ${format}`, hints: ["Use --format markdown or --format zip."] };
+  }
+  const normalizedFormat = format === "md" ? "markdown" : format;
+  const output = path.resolve(expandHome(args.output || defaultExportPath(ctx, normalizedFormat)));
+  ensureDir(path.dirname(output));
+  if (normalizedFormat === "markdown") {
+    const markdown = buildRunMarkdown(ctx, output);
+    fs.writeFileSync(output, markdown);
+  } else {
+    const outputInsideRun = output === ctx.run.dir || output.startsWith(`${ctx.run.dir}${path.sep}`);
+    const zipOutput = outputInsideRun
+      ? path.join(path.dirname(ctx.run.dir), `.ivista-export-${Date.now()}.zip`)
+      : output;
+    try {
+      fs.unlinkSync(zipOutput);
+    } catch {
+      // Ignore missing previous export.
+    }
+    const runName = path.basename(ctx.run.dir);
+    const ok = execTool("zip", ["-qry", zipOutput, runName, "-x", "*/._*", `${runName}/ivista-run-*`], path.dirname(ctx.run.dir))
+      || execTool("ditto", ["-c", "-k", "--norsrc", "--keepParent", runName, zipOutput], path.dirname(ctx.run.dir));
+    if (!ok) return { ok: false, error: "Unable to create zip export. Install ditto or zip." };
+    if (zipOutput !== output) {
+      try {
+        fs.unlinkSync(output);
+      } catch {
+        // Ignore missing previous export.
+      }
+      ensureDir(path.dirname(output));
+      fs.renameSync(zipOutput, output);
+    }
+  }
+  appendRunEvent("export", { format: normalizedFormat, output }, ctx);
+  return {
+    ok: true,
+    format: normalizedFormat,
+    output,
+    project: ctx.project,
+    conversation: ctx.conversation,
+    run: ctx.run,
+  };
+}
+
 export function appendRunEvent(type, data = {}, context = null) {
   const ctx = context || currentRun({ create: true, args: {} });
   if (!ctx.ok) return null;
@@ -238,4 +392,8 @@ export async function toolRunStart(args = {}) {
 
 export async function toolRunCurrent(args = {}) {
   return jsonText(currentRun({ create: Boolean(args.create), args }));
+}
+
+export async function toolRunExport(args = {}) {
+  return jsonText(exportRun(args));
 }

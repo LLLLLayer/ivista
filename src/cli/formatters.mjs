@@ -82,6 +82,18 @@ function printRun(payload) {
   if (payload.run?.eventsPath) console.log(`events: ${asPath(payload.run.eventsPath)}`);
 }
 
+function printRunExport(payload) {
+  if (!payload.ok) {
+    console.log("Run export failed.");
+    if (payload.error) console.log(`error: ${payload.error}`);
+    for (const hint of payload.hints || []) console.log(`hint: ${hint}`);
+    return;
+  }
+  console.log("Run exported.");
+  console.log(`format: ${payload.format}`);
+  console.log(`output: ${asPath(payload.output)}`);
+}
+
 function printSimulatorList(payload) {
   const devices = payload.devices || [];
   if (!payload.ok) {
@@ -301,6 +313,7 @@ function printGeneric(commandKey, payload) {
 
 function printHuman(commandKey, payload) {
   if (commandKey === "run start" || commandKey === "run current") return printRun(payload);
+  if (commandKey === "run export") return printRunExport(payload);
   if (commandKey === "doctor") return printDoctor(payload);
   if (commandKey === "simulator list") return printSimulatorList(payload);
   if (commandKey === "simulator boot") return printSimulatorBoot(payload);

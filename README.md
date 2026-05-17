@@ -104,6 +104,16 @@ Run artifacts are grouped by project, conversation, and run under `~/.ivista/pro
     0001-screenshot.png
     0002-source.xml
     0003-texts.json
+~/.ivista/projects/<project-key>/conversations/<conversation-id>/exports/
+  ivista-run-<run-id>.md
+  ivista-run-<run-id>.zip
+```
+
+Export a report or archive when the session is done:
+
+```bash
+ivista run export --format markdown
+ivista run export --format zip
 ```
 
 ## CLI Reference
@@ -114,6 +124,7 @@ ivista update [--ref main]
 ivista doctor [--json]
 ivista run start [--project .] [--conversation <id>] [--run <id>]
 ivista run current [--json]
+ivista run export [--format markdown|zip] [--output report.md]
 
 ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
 ivista simulator boot

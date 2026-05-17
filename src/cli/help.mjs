@@ -9,6 +9,7 @@ Usage:
   ivista doctor [--json]
   ivista run start [--project .] [--conversation <id>] [--run <id>]
   ivista run current [--json]
+  ivista run export [--format markdown|zip] [--output report.md]
   ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
   ivista simulator boot
   ivista simulator boot 1
@@ -70,6 +71,7 @@ Options:
   --base-url <url>        WDA base URL.
   --port <port>           WDA port. Defaults to 8100.
   --output <path>         Output path for commands that save files.
+  --format <format>       Export format, such as markdown or zip.
   --project <path>        Project root for run artifacts. Defaults to the nearest Git root.
   --conversation <id>     Conversation id for run artifacts.
   --run <id>              Run id for run artifacts.
