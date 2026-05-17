@@ -1,5 +1,6 @@
 import { toolDoctor } from "./doctor.mjs";
 import { toolDeviceList, toolSimulatorBoot, toolSimulatorList } from "./devices.mjs";
+import { toolRunCurrent, toolRunStart } from "./runs.mjs";
 import {
   toolWdaCacheStatus,
   toolWdaPrepare,
@@ -47,6 +48,33 @@ const semanticElementProperties = {
 };
 
 export const tools = {
+  ivista_run_start: {
+    description: "Start or select the current iVista project/conversation/run artifact context.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string" },
+        conversation: { type: "string" },
+        run: { type: "string" },
+        title: { type: "string" },
+      },
+    },
+    handler: toolRunStart,
+  },
+  ivista_run_current: {
+    description: "Show the current iVista project/conversation/run artifact context.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        create: { type: "boolean" },
+        project: { type: "string" },
+        conversation: { type: "string" },
+        run: { type: "string" },
+        title: { type: "string" },
+      },
+    },
+    handler: toolRunCurrent,
+  },
   ivista_doctor: {
     description: "Check local Xcode, simctl, git, iVista cache, and WDA configuration.",
     inputSchema: {

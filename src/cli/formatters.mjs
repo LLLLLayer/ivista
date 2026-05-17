@@ -61,6 +61,27 @@ function printDoctor(payload) {
   console.log("Run `ivista doctor --json` for full details.");
 }
 
+function printRun(payload) {
+  if (!payload.ok) {
+    console.log("No current iVista run.");
+    if (payload.error) console.log(`error: ${payload.error}`);
+    console.log("Start one with `ivista run start`.");
+    return;
+  }
+  console.log("iVista Run");
+  console.log("");
+  console.log(`project: ${payload.project?.name || payload.project?.projectKey}`);
+  console.log(`project key: ${payload.project?.projectKey}`);
+  if (payload.project?.root) console.log(`root: ${asPath(payload.project.root)}`);
+  if (payload.project?.gitRemote) console.log(`remote: ${payload.project.gitRemote}`);
+  if (payload.project?.branch) console.log(`branch: ${payload.project.branch}`);
+  console.log(`conversation: ${payload.conversation?.conversationId}`);
+  console.log(`run: ${payload.run?.runId}`);
+  if (payload.run?.dir) console.log(`path: ${asPath(payload.run.dir)}`);
+  if (payload.run?.artifactDir) console.log(`artifacts: ${asPath(payload.run.artifactDir)}`);
+  if (payload.run?.eventsPath) console.log(`events: ${asPath(payload.run.eventsPath)}`);
+}
+
 function printSimulatorList(payload) {
   const devices = payload.devices || [];
   if (!payload.ok) {
@@ -237,12 +258,14 @@ function printGeneric(commandKey, payload) {
     const value = payload.response?.value;
     console.log("Screenshot captured.");
     if (payload.output) console.log(`output: ${asPath(payload.output)}`);
+    if (payload.artifact?.path) console.log(`artifact: ${asPath(payload.artifact.path)}`);
     if (typeof value === "string") console.log(`base64 bytes: ${value.length}`);
     return;
   }
   if (commandKey === "screen source") {
     const value = payload.response?.value;
     console.log("Source captured.");
+    if (payload.artifact?.path) console.log(`artifact: ${asPath(payload.artifact.path)}`);
     if (typeof value === "string") console.log(`chars: ${value.length}`);
     return;
   }
@@ -251,6 +274,7 @@ function printGeneric(commandKey, payload) {
     for (const text of payload.texts || []) console.log(`- ${text}`);
     console.log("");
     console.log(`elements: ${(payload.elements || []).length}`);
+    if (payload.artifact?.path) console.log(`artifact: ${asPath(payload.artifact.path)}`);
     return;
   }
   if (commandKey === "wait text") {
@@ -276,6 +300,7 @@ function printGeneric(commandKey, payload) {
 }
 
 function printHuman(commandKey, payload) {
+  if (commandKey === "run start" || commandKey === "run current") return printRun(payload);
   if (commandKey === "doctor") return printDoctor(payload);
   if (commandKey === "simulator list") return printSimulatorList(payload);
   if (commandKey === "simulator boot") return printSimulatorBoot(payload);

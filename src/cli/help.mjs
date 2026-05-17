@@ -7,6 +7,8 @@ Usage:
   ivista version
   ivista update [--ref main]
   ivista doctor [--json]
+  ivista run start [--project .] [--conversation <id>] [--run <id>]
+  ivista run current [--json]
   ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
   ivista simulator boot
   ivista simulator boot 1
@@ -68,6 +70,10 @@ Options:
   --base-url <url>        WDA base URL.
   --port <port>           WDA port. Defaults to 8100.
   --output <path>         Output path for commands that save files.
+  --project <path>        Project root for run artifacts. Defaults to the nearest Git root.
+  --conversation <id>     Conversation id for run artifacts.
+  --run <id>              Run id for run artifacts.
+  --title <title>         Human title for a conversation or run.
   --text <text>           Match an accessibility name, label, or value exactly.
   --contains <text>       Match accessibility text partially.
   --regex <pattern>       Match accessibility text with a regular expression.

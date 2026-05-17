@@ -5,6 +5,7 @@ import { printResult } from "./formatters.mjs";
 import { printHelp, printVersion } from "./help.mjs";
 import { chooseSimulator, resolveSimulatorIndex } from "./simulator-picker.mjs";
 import { updateCli } from "./update.mjs";
+import { appendRunEvent, summarizeResult } from "../runs.mjs";
 
 async function callTool(tool, args) {
   return await callRuntimeTool(tool, args);
@@ -45,5 +46,17 @@ export async function main(argv = process.argv.slice(2)) {
     args.progress = true;
   }
   const result = await callTool(command.tool, args);
+  if (!command.key.startsWith("run ")) {
+    try {
+      const payload = JSON.parse(result?.content?.find((item) => item.type === "text")?.text || "null");
+      appendRunEvent("command", {
+        command: command.key,
+        args,
+        result: summarizeResult(payload),
+      });
+    } catch {
+      // Run logging must never break the actual device command.
+    }
+  }
   printResult(command.key, result, Boolean(options.json));
 }

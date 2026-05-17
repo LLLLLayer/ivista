@@ -12,6 +12,7 @@ const booleanOptions = new Set([
   "network",
   "usb",
   "allow-provisioning-updates",
+  "create",
 ]);
 
 const aliases = {

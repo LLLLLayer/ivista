@@ -27,6 +27,8 @@ ivista doctor
 ## What Works In The CLI
 
 - `ivista doctor`
+- `ivista run start`
+- `ivista run current`
 - `ivista simulator list`
 - `ivista simulator boot`
 - `ivista wda cache status`

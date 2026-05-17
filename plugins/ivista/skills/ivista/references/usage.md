@@ -8,11 +8,14 @@ Prefer Simulator first unless the user explicitly asks for a real device.
 
 ```bash
 ivista doctor
+ivista run start --project . --conversation <conversation-id>
 ivista simulator list
 ivista simulator boot
 ivista wda start --auto-port
 ivista wda status --port <port>
 ```
+
+Start a run before operating the device whenever possible. If the agent cannot access a real conversation id, use a stable task name. iVista stores screenshots, source, texts, and command events under `~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/`.
 
 If there is already a booted Simulator:
 
@@ -26,7 +29,7 @@ ivista wda status --port <port>
 Always observe before acting.
 
 ```bash
-ivista screen shot --port <port> --output /tmp/ivista.png
+ivista screen shot --port <port>
 ivista screen source --port <port>
 ivista screen texts --port <port>
 ```

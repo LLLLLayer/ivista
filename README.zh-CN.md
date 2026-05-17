@@ -61,10 +61,11 @@ ivista version
 
 ```bash
 ivista doctor
+ivista run start --project . --conversation smoke-settings
 ivista simulator list
 ivista simulator boot --name "iPhone 17"
 ivista wda start --simulator "iPhone 17" --auto-port --wait 180000
-ivista screen shot --output /tmp/ivista.png
+ivista screen shot
 ivista screen source
 ```
 
@@ -93,12 +94,26 @@ ivista wda status --json
 ivista screen shot --json
 ```
 
+运行素材会按照项目、对话和 run 归档到 `~/.ivista/projects/`。如果还没有执行 `ivista run start`，iVista 会从最近的 Git root 和可用的环境变量对话 id 自动创建当前 run。
+
+```text
+~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/
+  run.json
+  events.ndjson
+  artifacts/
+    0001-screenshot.png
+    0002-source.xml
+    0003-texts.json
+```
+
 ## CLI 命令参考
 
 ```bash
 ivista version
 ivista update [--ref main]
 ivista doctor [--json]
+ivista run start [--project .] [--conversation <id>] [--run <id>]
+ivista run current [--json]
 
 ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
 ivista simulator boot
@@ -166,6 +181,7 @@ ivista app terminate --bundle-id com.example.app
 - `--base-url <url>`：覆盖 WDA base URL。
 - `--port <port>`：WDA 端口，默认 `8100`。
 - `--auto-port`：自动选择可用 WDA 端口。
+- `--project <path>`、`--conversation <id>`、`--run <id>` 和 `--title <title>`：设置素材归档使用的项目、对话和 run 元信息。
 - `--workspace`、`--ios-project`、`--scheme`、`--signing-team` 和 `--wda-bundle-id`：真机 WDA 签名参数。
 - `--network` 和 `--usb`：强制真机传输模式。默认情况下，如果 `devicectl` 返回 `transportType=localNetwork`，iVista 会使用 CoreDevice tunnel。
 - `--output <path>`：保存输出文件，目前用于截图。

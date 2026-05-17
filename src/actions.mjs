@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { ensureDir, expandHome, jsonText } from "./core.mjs";
+import { saveRunArtifact } from "./runs.mjs";
 import { callWda } from "./sessions.mjs";
 import {
   candidateSummary,
@@ -19,23 +20,30 @@ import {
 export async function toolScreenshot(args = {}) {
   const response = await callWda(args, "GET", ["/screenshot", "/session/:sessionId/screenshot"]);
   let output = null;
+  const value = response.data?.value || response.data;
+  if (typeof value !== "string") throw new Error("WDA screenshot response did not contain base64 image data.");
+  const image = Buffer.from(value, "base64");
+  const artifact = saveRunArtifact(args, "screenshot", "png", image);
   if (args.output) {
-    const value = response.data?.value || response.data;
-    if (typeof value !== "string") throw new Error("WDA screenshot response did not contain base64 image data.");
     output = path.resolve(expandHome(args.output));
     ensureDir(path.dirname(output));
-    fs.writeFileSync(output, Buffer.from(value, "base64"));
+    fs.writeFileSync(output, image);
   }
-  return jsonText({ ok: true, output, response: response.data });
+  return jsonText({ ok: true, output, artifact, response: response.data });
 }
 
 export async function toolSource(args = {}) {
   const response = await callWda(args, "GET", ["/source", "/session/:sessionId/source"]);
-  return jsonText({ ok: true, response: response.data });
+  const value = response.data?.value || response.data;
+  const artifact = typeof value === "string" ? saveRunArtifact(args, "source", "xml", value) : null;
+  return jsonText({ ok: true, artifact, response: response.data });
 }
 
 export async function toolScreenTexts(args = {}) {
-  return await screenTexts(args);
+  const result = await screenTexts(args);
+  const payload = JSON.parse(result.content[0].text);
+  const artifact = saveRunArtifact(args, "texts", "json", `${JSON.stringify(payload, null, 2)}\n`);
+  return jsonText({ ...payload, artifact });
 }
 
 export async function toolTap(args = {}) {

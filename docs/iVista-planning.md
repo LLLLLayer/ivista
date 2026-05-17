@@ -202,6 +202,8 @@ ivista wda status [--port 8100]
 ### 3.4 屏幕读取
 
 ```bash
+ivista run start [--project .] [--conversation <id>] [--run <id>]
+ivista run current
 ivista screen shot [--port 8100] [--output /tmp/ivista.png] [--json]
 ivista screen source [--port 8100] [--json]
 ivista screen texts [--port 8100] [--json]
@@ -213,6 +215,7 @@ ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
 - 给 Agent 看当前屏幕。
 - 给调试报告保存现场。
 - 结合 source/accessibility texts 做更稳定的元素定位和等待。
+- 默认将截图、source、texts 和命令事件按项目/AI 对话/run 归档到 `~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/`，后续用于导出对话报告。
 
 ### 3.5 操作能力
 

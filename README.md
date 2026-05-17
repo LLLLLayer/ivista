@@ -61,10 +61,11 @@ ivista version
 
 ```bash
 ivista doctor
+ivista run start --project . --conversation smoke-settings
 ivista simulator list
 ivista simulator boot --name "iPhone 17"
 ivista wda start --simulator "iPhone 17" --auto-port --wait 180000
-ivista screen shot --output /tmp/ivista.png
+ivista screen shot
 ivista screen source
 ```
 
@@ -93,12 +94,26 @@ ivista wda status --json
 ivista screen shot --json
 ```
 
+Run artifacts are grouped by project, conversation, and run under `~/.ivista/projects/`. If `ivista run start` has not been called, iVista creates a current run automatically from the nearest Git root and environment conversation id when available.
+
+```text
+~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/
+  run.json
+  events.ndjson
+  artifacts/
+    0001-screenshot.png
+    0002-source.xml
+    0003-texts.json
+```
+
 ## CLI Reference
 
 ```bash
 ivista version
 ivista update [--ref main]
 ivista doctor [--json]
+ivista run start [--project .] [--conversation <id>] [--run <id>]
+ivista run current [--json]
 
 ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
 ivista simulator boot
@@ -166,6 +181,7 @@ Useful options:
 - `--base-url <url>`: override the WDA base URL.
 - `--port <port>`: WDA port, defaulting to `8100`.
 - `--auto-port`: find an available WDA port automatically.
+- `--project <path>`, `--conversation <id>`, `--run <id>`, and `--title <title>`: set project/conversation/run metadata for artifact logging.
 - `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, and `--wda-bundle-id`: real-device WDA signing inputs.
 - `--network` and `--usb`: force the real-device transport mode. By default iVista uses the CoreDevice tunnel when `devicectl` reports `transportType=localNetwork`.
 - `--output <path>`: save command output, currently used by screenshots.
