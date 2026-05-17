@@ -40,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 从仓库安装最新 tag：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.23
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.24
 ivista doctor
 ```
 
 更新已有的全局安装：
 
 ```bash
-ivista update --ref v0.1.23
+ivista update --ref v0.1.24
 ```
 
 本地开发安装：

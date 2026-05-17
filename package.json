@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
   "type": "module",
   "bin": {
@@ -14,7 +14,7 @@
     ".agents/plugins/marketplace.json"
   ],
   "scripts": {
-    "check": "for file in src/*.mjs bin/*.mjs; do node --check \"$file\"; done",
+    "check": "find src bin -name '*.mjs' -print0 | xargs -0 -n1 node --check",
     "doctor": "node bin/ivista.mjs doctor"
   },
   "keywords": [
