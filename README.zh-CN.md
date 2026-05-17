@@ -37,14 +37,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 从仓库安装最新 tag：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.21
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22
 ivista doctor
 ```
 
 更新已有的全局安装：
 
 ```bash
-ivista update --ref v0.1.21
+ivista update --ref v0.1.22
 ```
 
 本地开发安装：
@@ -105,6 +105,7 @@ ivista simulator boot --udid <simulator-udid>
 
 ivista wda cache status
 ivista wda prepare [--ref ivista-wda-v0.1.1]
+ivista wda start [--auto-port]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --simulator "iPhone 17" --auto-port
 ivista wda stop [--port 8100]

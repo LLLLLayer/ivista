@@ -25,7 +25,7 @@ If `ivista doctor` reports issues, prefer following its fix hints before attempt
 Install the released CLI from the GitHub npm package source:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.21
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22
 ```
 
 For local development from a checked-out repo:
@@ -82,7 +82,7 @@ Explain that `rm -rf` recursively deletes the target path without prompting, so 
 
 ## Common Repair Hints
 
-- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.21`.
+- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.22`.
 - Old version: run `ivista update`.
 - Xcode tools missing: install or select Xcode, then rerun `ivista doctor`.
 - WDA port busy: use `ivista wda start --auto-port` or stop the old runner with `ivista wda stop --port <port>`.

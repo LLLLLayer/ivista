@@ -10,7 +10,7 @@ Prefer Simulator first unless the user explicitly asks for a real device.
 ivista doctor
 ivista simulator list
 ivista simulator boot
-ivista wda start --simulator "<Simulator Name>" --auto-port
+ivista wda start --auto-port
 ivista wda status --port <port>
 ```
 
@@ -82,12 +82,12 @@ ivista app launch --port <port> --bundle-id com.apple.Preferences
 ```bash
 ivista wda cache status
 ivista wda prepare
-ivista wda start --simulator "<Simulator Name>" --auto-port
+ivista wda start --auto-port
 ivista wda status --port <port>
 ivista wda stop --port <port>
 ```
 
-Use `--auto-port` if the default port is busy or a previous WebDriverAgent runner crashed.
+With a single booted Simulator, `wda start` can infer the target. Use `--simulator`, `--name`, or `--udid` when multiple Simulators are booted. Use `--auto-port` if the default port is busy or a previous WebDriverAgent runner crashed.
 
 WDA exposes a Mac-side status URL:
 

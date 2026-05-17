@@ -429,28 +429,7 @@ async function toolDoctor(args = {}) {
 }
 
 async function toolSimulatorList(args = {}) {
-  const result = await runCommand("xcrun", ["simctl", "list", "devices", "available", "--json"], {
-    timeoutMs: args.timeoutMs || 15000,
-  });
-  if (!result.ok) return jsonText({ ok: false, error: result.stderr || result.stdout });
-  let data;
-  try {
-    data = JSON.parse(result.stdout);
-  } catch {
-    return jsonText({ ok: false, error: "Unable to parse simctl JSON", raw: result.stdout });
-  }
-  let devices = [];
-  for (const [runtime, runtimeDevices] of Object.entries(data.devices || {})) {
-    for (const device of runtimeDevices) {
-      devices.push({
-        runtime,
-        name: device.name,
-        udid: device.udid,
-        state: device.state,
-        isAvailable: device.isAvailable,
-      });
-    }
-  }
+  let devices = await listAvailableSimulators(args.timeoutMs || 15000);
   const total = devices.length;
   if (args.booted) devices = devices.filter((device) => device.state === "Booted");
   if (args.iphone) devices = devices.filter((device) => /^iPhone\b/.test(device.name));
@@ -466,19 +445,56 @@ async function toolSimulatorList(args = {}) {
   return jsonText({ ok: true, devices, total, filtered: devices.length, compact: !args.all });
 }
 
-async function resolveSimulator(input) {
-  if (!input) return null;
+async function listAvailableSimulators(timeoutMs = 15000) {
   const result = await runCommand("xcrun", ["simctl", "list", "devices", "available", "--json"], {
-    timeoutMs: 15000,
+    timeoutMs,
   });
   if (!result.ok) throw new Error(result.stderr || result.stdout);
-  const data = JSON.parse(result.stdout);
-  for (const runtimeDevices of Object.values(data.devices || {})) {
+  let data;
+  try {
+    data = JSON.parse(result.stdout);
+  } catch {
+    throw new Error("Unable to parse simctl JSON");
+  }
+  const devices = [];
+  for (const [runtime, runtimeDevices] of Object.entries(data.devices || {})) {
     for (const device of runtimeDevices) {
-      if (device.udid === input || device.name === input) return device;
+      devices.push({
+        runtime,
+        name: device.name,
+        udid: device.udid,
+        state: device.state,
+        isAvailable: device.isAvailable,
+      });
     }
   }
-  return null;
+  return devices;
+}
+
+async function resolveSimulator(input) {
+  if (!input) return null;
+  const devices = await listAvailableSimulators();
+  return devices.find((device) => device.udid === input || device.name === input) || null;
+}
+
+async function resolveWdaSimulator(args = {}) {
+  const target = args.simulator || args.name || args.udid;
+  if (target) {
+    const device = await resolveSimulator(target);
+    if (!device) throw new Error(`Simulator not found: ${target}`);
+    return { device, inferred: false };
+  }
+
+  const booted = (await listAvailableSimulators(args.timeoutMs || 15000))
+    .filter((device) => device.state === "Booted");
+  if (booted.length === 1) {
+    return { device: booted[0], inferred: true };
+  }
+  if (booted.length === 0) {
+    throw new Error("No booted Simulator found. Run `ivista simulator boot` or pass --simulator, --name, or --udid.");
+  }
+  const choices = booted.map((device, index) => `${index + 1}. ${device.name} (${device.udid})`).join("\n");
+  throw new Error(`Multiple booted Simulators found:\n${choices}\nPass --simulator, --name, or --udid.`);
 }
 
 async function toolSimulatorBoot(args = {}) {
@@ -545,15 +561,13 @@ async function toolWdaCacheStatus(args = {}) {
 }
 
 async function toolWdaStartSimulator(args = {}) {
-  const target = args.simulator || args.name || args.udid;
-  if (!target) throw new Error("Provide simulator, name, or udid.");
   const progress = Boolean(args.progress);
   const progressLine = (text) => {
     if (progress) process.stderr.write(`${text}\n`);
   };
   progressLine("Preparing Simulator and WDA...");
-  const device = await resolveSimulator(target);
-  if (!device) throw new Error(`Simulator not found: ${target}`);
+  const { device, inferred } = await resolveWdaSimulator(args);
+  if (inferred) progressLine(`Using booted Simulator: ${device.name} (${device.udid})`);
   if (device.state !== "Booted") {
     progressLine(`Booting Simulator: ${device.name}`);
     const bootResult = await toolSimulatorBoot({ ...args, simulator: device.udid });

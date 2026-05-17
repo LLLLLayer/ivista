@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { callTool as callRuntimeTool } from "../src/ivista-runtime.mjs";
 
-const CLI_VERSION = "0.1.21";
+const CLI_VERSION = "0.1.22";
 const INSTALL_REPO = "git+https://github.com/LLLLLayer/ivista.git";
 
 const commandMap = new Map([
@@ -54,6 +54,7 @@ Usage:
   ivista simulator boot 1
   ivista simulator boot --name "iPhone 16"
   ivista wda prepare [--ref ivista-wda-v0.1.1]
+  ivista wda start [--port 8100]
   ivista wda start --simulator "iPhone 16" [--port 8100]
   ivista wda start --simulator "iPhone 16" --auto-port
   ivista wda stop [--port 8100]
