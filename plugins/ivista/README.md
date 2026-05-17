@@ -98,3 +98,4 @@ Use `--wda-path` only for offline use, enterprise forks, or WDA debugging.
 
 - `ivista-install`: install, update, diagnose, repair, and prepare Simulator or real-device prerequisites.
 - `ivista`: operate a Simulator or real device after the CLI is available.
+- `ivista-report`: export Markdown reports or zip debug bundles from project/conversation/run artifacts.
