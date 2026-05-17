@@ -7,7 +7,7 @@ This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, skills
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.25
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.26
 ivista doctor
 ```
 

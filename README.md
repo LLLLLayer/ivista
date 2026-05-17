@@ -40,14 +40,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the latest tagged CLI from this repository:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.25
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.26
 ivista doctor
 ```
 
 Update an existing global install:
 
 ```bash
-ivista update --ref v0.1.25
+ivista update --ref v0.1.26
 ```
 
 For local development from this checkout:
