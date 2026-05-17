@@ -13,12 +13,12 @@ In one sentence: iVista turns an iOS Simulator or connected iPhone into an agent
 - List connected physical iOS devices.
 - Download and cache a pinned iVista WebDriverAgent fork automatically.
 - Start, stop, and check WebDriverAgent.
-- Start real-device WDA by reusing signing settings from a host iOS app project.
+- Start real-device WDA over USB or a CoreDevice wireless tunnel by reusing signing settings from a host iOS app project.
 - Capture screenshots and accessibility/source trees.
 - Run deterministic WDA actions: tap, double tap, two-finger tap, long press, drag, pinch, rotate, type, swipe, Home, keyboard dismiss, alerts, device info, device lock/unlock, hardware button press, app launch, and app termination.
 - Provide a skill-only Codex plugin that teaches agents how to install and call the same `ivista` CLI.
 
-The current implementation supports Simulator workflows and an early real-device WDA path. Richer reports, recipes, and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
+The current implementation supports Simulator workflows plus verified USB and CoreDevice wireless real-device WDA paths. Richer reports, recipes, and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
 
 ## Requirements
 
@@ -27,7 +27,7 @@ The current implementation supports Simulator workflows and an early real-device
 - Node.js 18 or newer.
 - Git.
 - At least one installed iOS Simulator runtime.
-- For real devices: a trusted/unlocked iPhone or iPad with Developer Mode enabled, plus `iproxy` from libimobiledevice.
+- For real devices: a trusted/unlocked iPhone or iPad with Developer Mode enabled. USB forwarding needs `iproxy` from libimobiledevice; wireless forwarding uses the CoreDevice tunnel exposed by Xcode/devicectl.
 
 If Xcode tools fail, select Xcode explicitly:
 
@@ -211,6 +211,21 @@ If signing cannot be inferred, pass `--signing-team <TEAMID>` and optionally `--
 
 Wireless devices are supported when Xcode/devicectl already sees the device over the local network and exposes a CoreDevice tunnel address. iVista detects `transportType=localNetwork` and talks to WDA through that tunnel directly. Use `--usb` to force USB `iproxy` forwarding.
 
+Verified real-device examples:
+
+```bash
+# USB path
+ivista wda start --device <device-udid> --usb --signing-team <TEAMID> --wda-bundle-id <bundle-id> --auto-port --wait 180000
+
+# Wireless path through the CoreDevice tunnel
+ivista device list --connected --json
+ivista wda start --device <device-udid> --network --signing-team <TEAMID> --wda-bundle-id <bundle-id> --port 8211 --wait 180000
+ivista screen shot --port 8211 --output /tmp/ivista.png
+ivista screen source --port 8211
+```
+
+When WDA is started through the CoreDevice tunnel, follow-up commands can still use the logical `--port`; iVista resolves it to the saved tunnel URL internally.
+
 ## Configuration
 
 iVista reads these environment variables:
@@ -309,7 +324,7 @@ ivista/
 ## Current Scope And Limitations
 
 - Simulator support is the primary working path.
-- Real-device support is not yet a full one-command bootstrap flow.
+- Real-device support works for local USB and CoreDevice wireless WDA paths, but is not yet a full one-command bootstrap flow for every signing, trust, and device state.
 - iVista performs deterministic WDA actions; it does not include a built-in vision planner.
 - Recipes, report generation, app debug hooks, Midscene adapters, and device-farm style execution are planned but not part of the current CLI surface.
 - Simulator validation is fast and useful, but it is not a complete substitute for real-device testing.

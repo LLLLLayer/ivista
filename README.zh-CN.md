@@ -13,12 +13,12 @@ iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 W
 - 列出已连接的物理 iOS 设备。
 - 自动下载并缓存固定版本的 iVista WebDriverAgent fork。
 - 启动、停止和检查 WebDriverAgent。
-- 通过宿主 iOS App 项目复用签名信息启动真机 WDA。
+- 通过宿主 iOS App 项目复用签名信息，使用 USB 或 CoreDevice 无线 tunnel 启动真机 WDA。
 - 获取截图和 accessibility/source 树。
 - 执行确定性的 WDA 动作：点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、收起键盘、处理弹窗、读取设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
 - 提供 skill-only Codex Plugin，让 Agent 学会安装并调用同一个 `ivista` CLI。
 
-当前实现支持 Simulator 工作流，并提供早期真机 WDA 路径。报告、Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
+当前实现支持 Simulator 工作流，也已经验证 USB 和 CoreDevice 无线真机 WDA 路径。报告、Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
 
 ## 环境要求
 
@@ -27,7 +27,7 @@ iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 W
 - Node.js 18 或更高版本。
 - Git。
 - 至少安装一个 iOS Simulator runtime。
-- 真机场景需要已信任/已解锁且开启 Developer Mode 的 iPhone 或 iPad，以及 libimobiledevice 提供的 `iproxy`。
+- 真机场景需要已信任/已解锁且开启 Developer Mode 的 iPhone 或 iPad。USB 转发需要 libimobiledevice 提供的 `iproxy`；无线转发使用 Xcode/devicectl 暴露的 CoreDevice tunnel。
 
 如果 Xcode 工具不可用，可以显式选择 Xcode：
 
@@ -211,6 +211,21 @@ ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme M
 
 无线设备可以用，前提是 Xcode/devicectl 已经能在局域网看到这台设备，并提供 CoreDevice tunnel 地址。iVista 会识别 `transportType=localNetwork`，并直接通过这个 tunnel 访问 WDA。如果想强制走 USB `iproxy` 转发，可以加 `--usb`。
 
+已验证的真机示例：
+
+```bash
+# USB 路径
+ivista wda start --device <device-udid> --usb --signing-team <TEAMID> --wda-bundle-id <bundle-id> --auto-port --wait 180000
+
+# CoreDevice tunnel 无线路径
+ivista device list --connected --json
+ivista wda start --device <device-udid> --network --signing-team <TEAMID> --wda-bundle-id <bundle-id> --port 8211 --wait 180000
+ivista screen shot --port 8211 --output /tmp/ivista.png
+ivista screen source --port 8211
+```
+
+WDA 通过 CoreDevice tunnel 启动后，后续命令仍然可以传逻辑上的 `--port`；iVista 会从 session 里自动解析到保存下来的 tunnel URL。
+
 ## 配置
 
 iVista 会读取这些环境变量：
@@ -309,7 +324,7 @@ ivista/
 ## 当前范围和限制
 
 - 当前主路径是 Simulator。
-- 真机还不是完整的一键启动流程。
+- 真机已经支持本地 USB 和 CoreDevice 无线 WDA 路径，但还不是覆盖所有签名、信任和设备状态的完整一键启动流程。
 - iVista 执行确定性 WDA 动作，不内置视觉规划器。
 - Recipe、报告生成、App debug hook、Midscene adapter 和设备农场式执行仍在规划中。
 - Simulator 验证很快也很有用，但不能完全替代真机测试。
