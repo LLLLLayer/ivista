@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { ensureDir, expandHome, jsonText, runCommand } from "./core.mjs";
+import { commandExists, ensureDir, expandHome, httpJson, jsonText, runCommand } from "./core.mjs";
 
 export async function toolSimulatorList(args = {}) {
   let devices = await listAvailableSimulators(args.timeoutMs || 15000);
@@ -132,6 +132,94 @@ export async function toolDeviceList(args = {}) {
   const total = devices.length;
   if (args.connected) devices = devices.filter((device) => device.connected);
   return jsonText({ ok: true, devices, total, filtered: devices.length });
+}
+
+function deviceCheck(ok, name, detail, hint = null) {
+  return { ok, name, detail, hint };
+}
+
+function urlHost(host) {
+  return String(host).includes(":") ? `[${host}]` : String(host);
+}
+
+export async function toolDeviceDiagnose(args = {}) {
+  const checks = [];
+  const hints = [];
+  const hasDevicectl = await commandExists("xcrun");
+  checks.push(deviceCheck(hasDevicectl, "xcrun available", hasDevicectl ? "found" : "missing", "Install Xcode command line tools and open Xcode once."));
+  const hasIproxy = await commandExists("iproxy");
+  checks.push(deviceCheck(hasIproxy, "iproxy available", hasIproxy ? "found" : "missing", "Install libimobiledevice with `brew install libimobiledevice` for USB forwarding."));
+
+  let devices = [];
+  try {
+    devices = await listPhysicalDevices(args.timeoutMs || 15000);
+  } catch (error) {
+    return jsonText({
+      ok: false,
+      error: error.message,
+      checks,
+      hints: ["Run `xcrun devicectl list devices` to confirm Xcode can see the device."],
+    });
+  }
+
+  const target = typeof args.device === "string" ? args.device : (args.udid || args.name || null);
+  const device = target
+    ? devices.find((item) => item.udid === target || item.identifier === target || item.name === target)
+    : devices.find((item) => item.connected) || devices[0] || null;
+
+  if (!device) {
+    return jsonText({
+      ok: false,
+      error: "No iOS device found by devicectl.",
+      devices,
+      checks,
+      hints: [
+        "Connect the iPhone/iPad with USB once, unlock it, and tap Trust This Computer.",
+        "Enable Developer Mode on the device.",
+        "Open Xcode > Window > Devices and Simulators and wait until the device appears.",
+      ],
+    });
+  }
+
+  checks.push(deviceCheck(device.pairingState === "paired", "paired with Mac", device.pairingState || "unknown", "Unlock the device, tap Trust This Computer, then reconnect it."));
+  checks.push(deviceCheck(device.developerModeStatus === "enabled", "Developer Mode", device.developerModeStatus || "unknown", "Enable Developer Mode in iOS Settings, then reconnect the device."));
+  checks.push(deviceCheck(Boolean(device.connected), "CoreDevice connected", device.connected ? "connected" : "offline", "Keep the device unlocked and visible in Xcode Devices and Simulators."));
+  checks.push(deviceCheck(Boolean(device.transportType), "transport detected", device.transportType || "unknown", "Reconnect USB once so Xcode can refresh the device record."));
+
+  const wirelessReady = device.transportType === "localNetwork"
+    && device.tunnelState === "connected"
+    && Boolean(device.tunnelIPAddress);
+  checks.push(deviceCheck(wirelessReady, "wireless CoreDevice tunnel", wirelessReady ? `${device.tunnelIPAddress}` : `${device.tunnelState || "unknown"} / ${device.transportType || "unknown"}`, "In Xcode Devices and Simulators, enable network connectivity for the device and keep it on the same Wi-Fi as the Mac."));
+
+  let baseUrl = null;
+  let wda = null;
+  if (wirelessReady && args.port) {
+    baseUrl = `http://${urlHost(device.tunnelIPAddress)}:${Number(args.port)}`;
+    try {
+      const response = await httpJson("GET", `${baseUrl}/status`, undefined, args.timeoutMs || 5000);
+      wda = { ok: response.statusCode >= 200 && response.statusCode < 300, baseUrl, response };
+      checks.push(deviceCheck(wda.ok, "WDA wireless /status", `${response.statusCode}`, "Start WDA with `ivista wda start --device <udid> --network --port <port>`."));
+    } catch (error) {
+      wda = { ok: false, baseUrl, error: error.message };
+      checks.push(deviceCheck(false, "WDA wireless /status", error.message, "Start WDA with `ivista wda start --device <udid> --network --port <port>`."));
+    }
+  }
+
+  for (const check of checks) {
+    if (!check.ok && check.hint) hints.push(check.hint);
+  }
+
+  const ok = checks.every((check) => check.ok || check.name === "iproxy available" || (check.name === "WDA wireless /status" && !args.port));
+  return jsonText({
+    ok,
+    device,
+    wirelessReady,
+    recommendedMode: wirelessReady ? "coredevice" : (hasIproxy ? "usb" : "unavailable"),
+    baseUrl,
+    wda,
+    checks,
+    hints: [...new Set(hints)],
+  });
 }
 
 export async function resolvePhysicalDevice(args = {}) {

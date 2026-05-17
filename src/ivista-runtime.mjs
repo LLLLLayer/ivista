@@ -1,5 +1,5 @@
 import { toolDoctor } from "./doctor.mjs";
-import { toolDeviceList, toolSimulatorBoot, toolSimulatorList } from "./devices.mjs";
+import { toolDeviceDiagnose, toolDeviceList, toolSimulatorBoot, toolSimulatorList } from "./devices.mjs";
 import { toolRunCurrent, toolRunExport, toolRunStart } from "./runs.mjs";
 import {
   toolWdaCacheStatus,
@@ -135,6 +135,20 @@ export const tools = {
       },
     },
     handler: toolDeviceList,
+  },
+  ivista_device_diagnose: {
+    description: "Diagnose real-device readiness, especially the Xcode/CoreDevice wireless tunnel used by iVista.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        device: { type: "string" },
+        name: { type: "string" },
+        udid: { type: "string" },
+        port: { type: "number" },
+        timeoutMs: { type: "number" },
+      },
+    },
+    handler: toolDeviceDiagnose,
   },
   ivista_wda_cache_status: {
     description: "Inspect the local cached WebDriverAgent project.",

@@ -109,6 +109,25 @@ async function textCoordinateGesture(args, gestureName, invoke) {
 export async function toolTapText(args = {}) {
   const selector = resolveTextSelector(args);
   const selectedIndex = indexFromArgs(args);
+  const target = await sourcePointForText(args, selector);
+  let coordinateTapError = null;
+  if (target.ok) {
+    try {
+      const response = await coordinateTap(args, target.point);
+      return jsonText({
+        ok: true,
+        gesture: "tap",
+        method: "rect-center",
+        selector,
+        point: target.point,
+        match: candidateSummary(target.candidate, selectedIndex - 1),
+        response: response.data,
+      });
+    } catch (error) {
+      coordinateTapError = error.message;
+      // Fall through to element click. Some WDA/device combinations reject coordinate taps.
+    }
+  }
   let elementLookupError = null;
   let elementIds = [];
   try {
@@ -126,27 +145,27 @@ export async function toolTapText(args = {}) {
         method: "element-click",
         selector,
         index: selectedIndex,
+        match: target.ok ? candidateSummary(target.candidate, selectedIndex - 1) : null,
         response: response.data,
       });
     } catch {
       // Fall back to the source rect center below; element click can be flaky on some WDA builds.
     }
   }
-  const target = await sourcePointForText(args, selector);
   if (!target.ok) {
     const payload = JSON.parse(elementNotFoundPayload(selector, target.matches || []).content[0].text);
     if (elementLookupError) payload.elementLookupError = elementLookupError;
     return jsonText(payload);
   }
-  const response = await coordinateTap(args, target.point);
   return jsonText({
-    ok: true,
+    ok: false,
     gesture: "tap",
     method: "rect-center",
     selector,
     point: target.point,
     match: candidateSummary(target.candidate, selectedIndex - 1),
-    response: response.data,
+    error: coordinateTapError || "Matched element, but tap failed.",
+    hints: ["Retry with coordinate tap using the printed point.", "If another element is intended, pass --index <n> after inspecting candidates with `ivista screen texts`."],
   });
 }
 

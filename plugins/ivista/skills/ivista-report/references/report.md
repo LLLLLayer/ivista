@@ -88,14 +88,19 @@ The Markdown report includes:
 - project metadata
 - conversation id
 - run id
+- command counts and failed command count
 - artifact table
+- screenshot previews
+- accessibility text snapshot summaries
+- failure section with fix hints
 - event timeline
-- command summaries
+- command summaries with raw JSON
 
 The zip bundle includes:
 
 - `run.json`
 - `events.ndjson`
 - `artifacts/`
+- `run-report.md`
 
-It intentionally excludes generated export files and macOS `._` metadata files.
+It intentionally excludes generated `ivista-run-*` export files and macOS `._` metadata files.

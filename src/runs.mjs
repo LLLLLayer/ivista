@@ -4,6 +4,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { ensureDir, expandHome, ivistaHome, jsonText } from "./core.mjs";
+import { CLI_VERSION } from "./cli/constants.mjs";
 
 function nowIso() {
   return new Date().toISOString();
@@ -231,7 +232,11 @@ function markdownEscape(value) {
 }
 
 function relativeLink(fromDir, file) {
-  return path.relative(fromDir, file).split(path.sep).join("/");
+  const relative = path.relative(fromDir, file);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    return file.split(path.sep).join("/");
+  }
+  return relative.split(path.sep).join("/");
 }
 
 function eventDescription(event, reportDir) {
@@ -256,16 +261,72 @@ function eventDescription(event, reportDir) {
   return event.type;
 }
 
+function artifactLink(reportDir, artifact) {
+  if (!artifact?.path) return "";
+  return `[${markdownEscape(path.basename(artifact.path))}](${relativeLink(reportDir, artifact.path)})`;
+}
+
+function commandStatus(event) {
+  if (event.result?.ok === false) return "failed";
+  if (event.result?.ok === true) return "ok";
+  return "unknown";
+}
+
+function artifactKindCounts(events) {
+  const counts = new Map();
+  for (const event of events) {
+    counts.set(event.kind, (counts.get(event.kind) || 0) + 1);
+  }
+  return [...counts.entries()].map(([kind, count]) => `${kind}: ${count}`).join(", ") || "none";
+}
+
+function readArtifactJson(artifact) {
+  try {
+    return JSON.parse(fs.readFileSync(artifact.path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function screenshotPreviewLines(reportDir, artifactEvents) {
+  const screenshots = artifactEvents.filter((event) => event.kind === "screenshot" && event.artifact?.path).slice(-6);
+  if (screenshots.length === 0) return ["No screenshots captured.", ""];
+  const lines = [];
+  for (const event of screenshots) {
+    const src = relativeLink(reportDir, event.artifact.path);
+    lines.push(`### ${event.ts}`, "");
+    lines.push(`![Screenshot ${event.ts}](${src})`, "");
+  }
+  return lines;
+}
+
+function textSnapshotLines(reportDir, artifactEvents) {
+  const snapshots = artifactEvents.filter((event) => event.kind === "texts" && event.artifact?.path).slice(-5);
+  if (snapshots.length === 0) return ["No text snapshots captured.", ""];
+  const lines = ["| Time | File | Text Count | First Texts |", "| --- | --- | --- | --- |"];
+  for (const event of snapshots) {
+    const data = readArtifactJson(event.artifact) || {};
+    const texts = Array.isArray(data.texts) ? data.texts : [];
+    const preview = texts.slice(0, 8).join(", ");
+    lines.push(`| ${markdownEscape(event.ts)} | ${artifactLink(reportDir, event.artifact)} | ${texts.length} | ${markdownEscape(preview)} |`);
+  }
+  lines.push("");
+  return lines;
+}
+
 export function buildRunMarkdown(ctx, outputPath) {
   const reportDir = path.dirname(outputPath);
   const events = readNdjson(ctx.run.eventsPath);
   const artifactEvents = events.filter((event) => event.type === "artifact");
   const commandEvents = events.filter((event) => event.type === "command");
+  const failedCommandEvents = commandEvents.filter((event) => event.result?.ok === false);
   const lines = [
     "# iVista Run Report",
     "",
     "## Summary",
     "",
+    `- Generated: ${nowIso()}`,
+    `- iVista CLI: ${CLI_VERSION}`,
     `- Project: ${ctx.project.name || ctx.project.projectKey}`,
     `- Project key: ${ctx.project.projectKey}`,
     `- Project root: ${ctx.project.root}`,
@@ -275,6 +336,10 @@ export function buildRunMarkdown(ctx, outputPath) {
     `- Run: ${ctx.run.runId}`,
     `- Created: ${ctx.run.createdAt}`,
     `- Updated: ${ctx.run.updatedAt}`,
+    `- Commands: ${commandEvents.length}`,
+    `- Failed commands: ${failedCommandEvents.length}`,
+    `- Artifacts: ${artifactEvents.length} (${artifactKindCounts(artifactEvents)})`,
+    `- Run directory: ${ctx.run.dir}`,
     "",
     "## Artifacts",
     "",
@@ -285,8 +350,20 @@ export function buildRunMarkdown(ctx, outputPath) {
     lines.push("| Time | Kind | File |", "| --- | --- | --- |");
     for (const event of artifactEvents) {
       const artifact = event.artifact || {};
-      const link = artifact.path ? `[${markdownEscape(path.basename(artifact.path))}](${relativeLink(reportDir, artifact.path)})` : "";
+      const link = artifactLink(reportDir, artifact);
       lines.push(`| ${markdownEscape(event.ts)} | ${markdownEscape(event.kind)} | ${link} |`);
+    }
+    lines.push("");
+  }
+  lines.push("## Screenshots", "", ...screenshotPreviewLines(reportDir, artifactEvents));
+  lines.push("## Text Snapshots", "", ...textSnapshotLines(reportDir, artifactEvents));
+  lines.push("## Failures", "");
+  if (failedCommandEvents.length === 0) {
+    lines.push("No failed commands recorded.", "");
+  } else {
+    for (const event of failedCommandEvents) {
+      lines.push(`- ${event.ts} - \`${event.command}\`: ${event.result?.error || "failed"}`);
+      for (const hint of event.result?.hints || []) lines.push(`  - hint: ${hint}`);
     }
     lines.push("");
   }
@@ -304,10 +381,14 @@ export function buildRunMarkdown(ctx, outputPath) {
     lines.push("No commands recorded.", "");
   } else {
     for (const event of commandEvents) {
-      lines.push(`### ${event.ts} - ${event.command}`, "");
+      lines.push(`### ${event.ts} - ${event.command} (${commandStatus(event)})`, "");
       lines.push("```json", JSON.stringify({ args: event.args, result: event.result }, null, 2), "```", "");
     }
   }
+  lines.push("## Machine-Readable Files", "");
+  lines.push(`- Run metadata: ${artifactLink(reportDir, { path: path.join(ctx.run.dir, "run.json") })}`);
+  lines.push(`- Event stream: ${artifactLink(reportDir, { path: ctx.run.eventsPath })}`);
+  lines.push("");
   return `${lines.join("\n")}\n`;
 }
 
@@ -330,6 +411,7 @@ export function exportRun(args = {}) {
     const markdown = buildRunMarkdown(ctx, output);
     fs.writeFileSync(output, markdown);
   } else {
+    fs.writeFileSync(path.join(ctx.run.dir, "run-report.md"), buildRunMarkdown(ctx, path.join(ctx.run.dir, "run-report.md")));
     const outputInsideRun = output === ctx.run.dir || output.startsWith(`${ctx.run.dir}${path.sep}`);
     const zipOutput = outputInsideRun
       ? path.join(path.dirname(ctx.run.dir), `.ivista-export-${Date.now()}.zip`)

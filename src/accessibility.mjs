@@ -4,6 +4,18 @@ import { callWda } from "./sessions.mjs";
 const TEXT_FIELDS = ["name", "label", "value"];
 const DEFAULT_WAIT_MS = 10000;
 const POLL_MS = 500;
+const TYPE_PRIORITY = new Map([
+  ["XCUIElementTypeButton", 0],
+  ["XCUIElementTypeCell", 1],
+  ["XCUIElementTypeLink", 1],
+  ["XCUIElementTypeTextField", 1],
+  ["XCUIElementTypeSecureTextField", 1],
+  ["XCUIElementTypeSearchField", 1],
+  ["XCUIElementTypeStaticText", 2],
+  ["XCUIElementTypeOther", 5],
+  ["XCUIElementTypeWindow", 9],
+  ["XCUIElementTypeApplication", 10],
+]);
 
 function decodeXml(value) {
   return String(value || "")
@@ -48,6 +60,14 @@ function uniqueTexts(attrs) {
     out.push({ field, value });
   }
   return out;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase();
 }
 
 export function parseWdaSource(xml) {
@@ -98,7 +118,7 @@ function buildPredicate(selector) {
   if (selector.mode === "regex") {
     return TEXT_FIELDS.map((field) => `${field} MATCHES[c] ${quoted}`).join(" OR ");
   }
-  return TEXT_FIELDS.map((field) => `${field} == ${quoted}`).join(" OR ");
+  return TEXT_FIELDS.map((field) => `${field} ==[c] ${quoted}`).join(" OR ");
 }
 
 function makeMatcher(selector) {
@@ -107,10 +127,11 @@ function makeMatcher(selector) {
     return (value) => regex.test(String(value || ""));
   }
   if (selector.mode === "contains") {
-    const needle = selector.text.toLocaleLowerCase();
-    return (value) => String(value || "").toLocaleLowerCase().includes(needle);
+    const needle = normalizeText(selector.text);
+    return (value) => normalizeText(value).includes(needle);
   }
-  return (value) => String(value || "") === selector.text;
+  const needle = normalizeText(selector.text);
+  return (value) => normalizeText(value) === needle;
 }
 
 function isUsableElement(element) {
@@ -126,16 +147,58 @@ function centerOf(rect) {
   };
 }
 
+function areaOf(rect) {
+  return rect ? rect.width * rect.height : Number.MAX_SAFE_INTEGER;
+}
+
+function fieldPriority(field) {
+  const index = TEXT_FIELDS.indexOf(field);
+  return index === -1 ? TEXT_FIELDS.length : index;
+}
+
+function typePriority(type) {
+  return TYPE_PRIORITY.has(type) ? TYPE_PRIORITY.get(type) : 4;
+}
+
+function matchScore(element, matchedText, selector) {
+  let score = 0;
+  if (element.visible === "true") score += 100;
+  if (element.enabled === "true") score += 80;
+  if (element.accessible === "true") score += 40;
+  score += Math.max(0, 30 - typePriority(element.type) * 5);
+  score += Math.max(0, 20 - fieldPriority(matchedText?.field) * 5);
+  const normalizedValue = normalizeText(matchedText?.value);
+  const normalizedNeedle = normalizeText(selector.text);
+  if (normalizedValue === normalizedNeedle) score += 50;
+  if (selector.mode === "contains" && normalizedValue.startsWith(normalizedNeedle)) score += 12;
+  if (element.rect) {
+    const area = areaOf(element.rect);
+    if (area > 0 && area < 200000) score += Math.max(0, 30 - Math.log10(area) * 5);
+  }
+  return Math.round(score * 100) / 100;
+}
+
 export function findSourceMatches(xml, selector) {
   const matcher = makeMatcher(selector);
   return parseWdaSource(xml)
-    .filter((element) => element.texts.some((item) => matcher(item.value)))
     .map((element) => ({
       ...element,
       matchedText: element.texts.find((item) => matcher(item.value)) || null,
+      matchedTexts: element.texts.filter((item) => matcher(item.value)),
       center: element.rect ? centerOf(element.rect) : null,
     }))
-    .filter(isUsableElement);
+    .filter((element) => element.matchedText)
+    .filter(isUsableElement)
+    .map((element) => ({
+      ...element,
+      score: matchScore(element, element.matchedText, selector),
+    }))
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      const areaDelta = areaOf(left.rect) - areaOf(right.rect);
+      if (areaDelta !== 0) return areaDelta;
+      return typePriority(left.type) - typePriority(right.type);
+    });
 }
 
 export async function readSourceMatches(args = {}, selector = resolveTextSelector(args)) {
@@ -175,9 +238,10 @@ export function candidateSummary(candidate, index) {
     type: candidate.type,
     field,
     text: value,
+    score: candidate.score,
     rect: candidate.rect,
     center: candidate.center,
-    summary: `${index + 1}. ${candidate.type} ${field}="${value}" ${rect}`,
+    summary: `${index + 1}. ${candidate.type} ${field}="${value}" score=${candidate.score ?? "n/a"} ${rect}`,
   };
 }
 

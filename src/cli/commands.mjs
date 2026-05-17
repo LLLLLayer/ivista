@@ -6,6 +6,7 @@ export const commandMap = new Map([
   ["simulator list", "ivista_simulator_list"],
   ["simulator boot", "ivista_simulator_boot"],
   ["device list", "ivista_device_list"],
+  ["device diagnose", "ivista_device_diagnose"],
   ["wda cache status", "ivista_wda_cache_status"],
   ["wda prepare", "ivista_wda_prepare"],
   ["wda start", "ivista_wda_start_simulator"],

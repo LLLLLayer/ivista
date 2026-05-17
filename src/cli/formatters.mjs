@@ -156,6 +156,24 @@ function printDeviceList(payload) {
   });
 }
 
+function printDeviceDiagnose(payload) {
+  console.log(payload.ok ? "Real-device path looks usable." : "Real-device path needs attention.");
+  if (payload.device?.name) console.log(`device: ${payload.device.name}`);
+  if (payload.device?.udid) console.log(`udid: ${payload.device.udid}`);
+  if (payload.recommendedMode) console.log(`recommended mode: ${payload.recommendedMode}`);
+  if (payload.baseUrl) console.log(`wireless url: ${payload.baseUrl}`);
+  console.log("");
+  for (const check of payload.checks || []) {
+    console.log(`${mark(check.ok)} ${check.name}: ${check.detail || ""}`);
+    if (!check.ok && check.hint) console.log(`       ${check.hint}`);
+  }
+  if (payload.hints?.length) {
+    console.log("");
+    console.log("Fix hints:");
+    for (const hint of payload.hints) console.log(`- ${hint}`);
+  }
+}
+
 function printWdaCache(payload) {
   if (!payload.ok) {
     console.log(`WDA cache check failed: ${payload.error || "unknown error"}`);
@@ -318,6 +336,7 @@ function printHuman(commandKey, payload) {
   if (commandKey === "simulator list") return printSimulatorList(payload);
   if (commandKey === "simulator boot") return printSimulatorBoot(payload);
   if (commandKey === "device list") return printDeviceList(payload);
+  if (commandKey === "device diagnose") return printDeviceDiagnose(payload);
   if (commandKey === "wda cache status") return printWdaCache(payload);
   if (commandKey === "wda prepare") return printWdaPrepare(payload);
   if (commandKey === "wda start") return printWdaStart(payload);

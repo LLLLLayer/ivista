@@ -24,6 +24,8 @@ ivista run export --format markdown
 ivista run export --format zip
 ```
 
+The Markdown report contains metadata, command counts, failures, screenshot previews, accessibility text snapshots, and raw command summaries. The zip export includes the run folder plus `run-report.md`.
+
 If there is already a booted Simulator:
 
 ```bash
@@ -64,6 +66,8 @@ ivista wait text "Done" --port <port> --timeout 10000
 ```
 
 Prefer `--text`, `--contains`, or `--regex` when the target appears in Accessibility. Use coordinates when the app is a game, canvas, custom-rendered screen, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
+
+Text matching is normalized for case and whitespace. When several elements match, iVista prefers visible, enabled, accessible, smaller interactive elements over broad containers; still inspect candidates when the first match is not the intended target.
 
 ## Keyboard, Alerts, Device
 
@@ -123,6 +127,7 @@ Start by discovering the device:
 
 ```bash
 ivista device list --connected
+ivista device diagnose --device <device-udid>
 ```
 
 Then inspect the current project directory when the target project is not obvious. The CLI can also infer a single nearby `.xcworkspace` or `.xcodeproj` from the current directory or a parent directory.
@@ -188,7 +193,7 @@ ivista wda start --device <device-udid> --signing-team <TEAMID> --wda-bundle-id 
 Real-device prerequisites:
 
 - Device is connected, unlocked, paired/trusted, and Developer Mode is enabled.
-- Wireless is supported when `ivista device list --connected --json` shows `transportType` as `localNetwork` and a `tunnelIPAddress`; iVista will talk to WDA through the CoreDevice tunnel directly. Use `--usb` to force USB `iproxy` forwarding.
+- Wireless is supported when `ivista device diagnose --device <udid>` reports `wireless CoreDevice tunnel` as OK; iVista will talk to WDA through that CoreDevice tunnel directly. Use `--usb` to force USB `iproxy` forwarding.
 - Xcode can build to the device with the selected team.
 - `iproxy` is installed and available in PATH for USB forwarding.
 - First launch may require a longer `--wait` because Xcode may create provisioning assets.

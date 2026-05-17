@@ -7,7 +7,7 @@ This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, skills
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.27
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.28
 ivista doctor
 ```
 
@@ -32,6 +32,8 @@ ivista doctor
 - `ivista run export`
 - `ivista simulator list`
 - `ivista simulator boot`
+- `ivista device list`
+- `ivista device diagnose`
 - `ivista wda cache status`
 - `ivista wda prepare`
 - `ivista wda start`
@@ -66,6 +68,8 @@ ivista doctor
 - `ivista app launch`
 - `ivista app terminate`
 
+Run exports now include richer Markdown reports with screenshot previews, text snapshot summaries, command counts, failures, and raw command JSON. Zip exports include the run directory plus `run-report.md`.
+
 ## Default User Flow
 
 ```bash
@@ -88,7 +92,7 @@ The CLI accepts these environment variables:
 
 - `IVISTA_HOME`: defaults to `~/.ivista`
 - `IVISTA_WDA_REPO`: defaults to `https://github.com/LLLLLayer/ivista-wda.git`
-- `IVISTA_WDA_REF`: defaults to `ivista-wda-v0.1.2`
+- `IVISTA_WDA_REF`: defaults to `ivista-wda-v0.1.3`
 - `IVISTA_WDA_PORT`: defaults to `8100`
 - `IVISTA_WDA_BASE_URL`: overrides the WDA URL for direct connections
 
