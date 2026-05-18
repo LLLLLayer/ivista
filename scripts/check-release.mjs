@@ -44,6 +44,20 @@ for (const plugin of claudeMarketplace.plugins ?? []) {
   }
 }
 
+const installSkillReference = fs.readFileSync(
+  path.join(root, "plugins/ivista/skills/ivista-install/references/install.md"),
+  "utf8",
+);
+if (!installSkillReference.includes(`The pinned release for this skill is \`${currentTag}\``)) {
+  failures.push("ivista-install skill pinned release does not match package version");
+}
+if (!installSkillReference.includes(`iVista CLI ${version}`)) {
+  failures.push("ivista-install skill expected CLI version does not match package version");
+}
+if (!installSkillReference.includes(`ivista update --ref ${currentTag}`)) {
+  failures.push("ivista-install skill update command does not match package version");
+}
+
 function collectTextFiles(dir = root, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (ignoredDirs.has(entry.name)) continue;

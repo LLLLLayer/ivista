@@ -18,6 +18,20 @@ ivista version
 ivista doctor
 ```
 
+The pinned release for this skill is `v1.0.6`. If `ivista version` is missing, older, or different from `iVista CLI 1.0.6`, update before continuing:
+
+```bash
+ivista update --ref v1.0.6
+```
+
+If `ivista update` is not available or fails because the CLI is too old or broken, reinstall from the pinned tag:
+
+```bash
+npm uninstall -g ivista
+hash -r
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.6
+```
+
 If `ivista doctor` reports issues, prefer following its fix hints before attempting manual repair.
 
 ## Install
@@ -25,7 +39,7 @@ If `ivista doctor` reports issues, prefer following its fix hints before attempt
 Install the released CLI from the GitHub npm package source:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.5
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.6
 ```
 
 For local development from a checked-out repo:
@@ -136,8 +150,8 @@ Explain that `rm -rf` recursively deletes the target path without prompting, so 
 
 ## Common Repair Hints
 
-- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.5`.
-- Old version: run `ivista update`.
+- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.6`.
+- Old or mismatched version: run `ivista update --ref v1.0.6`, or reinstall from the pinned GitHub tag if update fails.
 - Xcode tools missing: install or select Xcode, then rerun `ivista doctor`.
 - Real device missing: unlock the device, trust this Mac, enable Developer Mode, reconnect USB, then run `ivista device list --connected`.
 - `iproxy` missing: install libimobiledevice/usbmuxd, for example `brew install libimobiledevice`.

@@ -26,6 +26,8 @@ ivista version
 ivista doctor
 ```
 
+Compare the installed CLI version with the release pinned in [references/install.md](references/install.md). If the installed version is missing, older, or different from the pinned release, guide the user through `ivista update --ref <pinned-tag>` or reinstall from the pinned GitHub tag before continuing.
+
 For Simulator setup:
 
 ```bash

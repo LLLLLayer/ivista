@@ -13,7 +13,7 @@ This plugin is skill-only. It does not expose MCP tools. Use the `ivista` CLI fr
 
 Read [references/usage.md](references/usage.md), then operate the device with the CLI.
 
-If iVista is missing or broken, switch to the `ivista-install` skill first.
+If iVista is missing, broken, too old, or behaves differently from this skill's command examples, switch to the `ivista-install` skill first and guide the user to the pinned CLI release.
 
 ## Target Choice
 

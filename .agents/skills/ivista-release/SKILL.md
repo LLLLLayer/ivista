@@ -39,6 +39,7 @@ WDA branch should normally be `develop`. Do not tag WDA before the Xcode build p
 
 - Bump `package.json` version.
 - Bump `CLI_VERSION` in `src/cli/constants.mjs`.
+- Treat the plugin skills as bound to the same released CLI version. The `ivista-install` skill must pin the same `vX.Y.Z` tag and instruct users with missing, old, or mismatched CLIs to update or reinstall to that tag.
 - If WDA changed, update `DEFAULT_WDA_REF` in `src/core.mjs`.
 - Update help text, README, Chinese README, project planning docs, plugin docs, and skill references that mention the old CLI version or WDA ref.
 
@@ -64,6 +65,7 @@ Confirm dry-run package contents. `ivista-wda/` must not appear.
 
 - `package.json`, `src/cli/constants.mjs`, Codex plugin manifest, Claude plugin manifest, or Claude marketplace manifest disagree on the CLI version.
 - README, Chinese README, plugin docs, or skill references contain an old CLI tag such as a previous `v0.1.x` release.
+- The pinned CLI release in `plugins/ivista/skills/ivista-install/references/install.md` differs from the package version.
 
 WDA refs such as `ivista-wda-v1.0.0` are independent and are allowed to differ from the CLI version.
 
