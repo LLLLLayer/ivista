@@ -2,7 +2,8 @@ import { jsonText } from "./core.mjs";
 import { callWda } from "./sessions.mjs";
 
 const TEXT_FIELDS = ["name", "label", "value"];
-const DEFAULT_WAIT_MS = 10000;
+export const DEFAULT_ACCESSIBILITY_TIMEOUT_MS = 5000;
+const DEFAULT_WAIT_MS = DEFAULT_ACCESSIBILITY_TIMEOUT_MS;
 const POLL_MS = 500;
 const TYPE_PRIORITY = new Map([
   ["XCUIElementTypeButton", 0],
@@ -109,6 +110,13 @@ export function resolveTextSelector(args = {}) {
 
 export function hasTextSelector(args = {}) {
   return typeof args.text === "string" || typeof args.contains === "string" || typeof args.regex === "string";
+}
+
+function accessibilityArgs(args = {}) {
+  return {
+    ...args,
+    timeoutMs: args.timeoutMs || DEFAULT_ACCESSIBILITY_TIMEOUT_MS,
+  };
 }
 
 function buildPredicate(selector) {
@@ -254,7 +262,7 @@ export function findTextSuggestions(xml, selector, limit = 8) {
 }
 
 export async function readSourceMatches(args = {}, selector = resolveTextSelector(args)) {
-  const response = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
+  const response = await callWda(accessibilityArgs(args), "GET", ["/session/:sessionId/source", "/source"]);
   const xml = response.data?.value || response.data;
   if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
   const matches = findSourceMatches(xml, selector);
@@ -262,7 +270,7 @@ export async function readSourceMatches(args = {}, selector = resolveTextSelecto
 }
 
 export async function findWdaElementIds(args = {}, selector = resolveTextSelector(args)) {
-  const response = await callWda(args, "POST", ["/session/:sessionId/elements"], {
+  const response = await callWda(accessibilityArgs(args), "POST", ["/session/:sessionId/elements"], {
     using: "predicate string",
     value: buildPredicate(selector),
   });
@@ -272,7 +280,7 @@ export async function findWdaElementIds(args = {}, selector = resolveTextSelecto
 }
 
 export async function clickWdaElement(args = {}, id) {
-  return await callWda(args, "POST", [`/session/:sessionId/element/${encodeURIComponent(id)}/click`], {});
+  return await callWda(accessibilityArgs(args), "POST", [`/session/:sessionId/element/${encodeURIComponent(id)}/click`], {});
 }
 
 export function selectorSummary(selector) {
@@ -330,7 +338,7 @@ export async function waitForText(args = {}) {
   while (Date.now() - startedAt <= timeoutMs) {
     const remaining = Math.max(1000, timeoutMs - (Date.now() - startedAt));
     try {
-      const result = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, 10000) }, selector);
+      const result = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, DEFAULT_ACCESSIBILITY_TIMEOUT_MS) }, selector);
       const { matches } = result;
       suggestions = result.suggestions || suggestions;
       if (matches.length > 0) {
@@ -367,7 +375,7 @@ export async function waitForGone(args = {}) {
   while (Date.now() - startedAt <= timeoutMs) {
     const remaining = Math.max(1000, timeoutMs - (Date.now() - startedAt));
     try {
-      const { matches } = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, 10000) }, selector);
+      const { matches } = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, DEFAULT_ACCESSIBILITY_TIMEOUT_MS) }, selector);
       lastMatches = matches;
       lastError = null;
       if (matches.length === 0) {
@@ -416,7 +424,7 @@ export async function waitForIdle(args = {}) {
   while (Date.now() - startedAt <= timeoutMs) {
     const remaining = Math.max(1000, timeoutMs - (Date.now() - startedAt));
     try {
-      const response = await callWda({ ...args, timeoutMs: Math.min(remaining, 10000) }, "GET", ["/session/:sessionId/source", "/source"]);
+      const response = await callWda({ ...args, timeoutMs: Math.min(remaining, DEFAULT_ACCESSIBILITY_TIMEOUT_MS) }, "GET", ["/session/:sessionId/source", "/source"]);
       const xml = response.data?.value || response.data;
       if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
       const fingerprint = stableSourceFingerprint(xml);
@@ -478,7 +486,7 @@ export function screenTextsFromXml(xml) {
 }
 
 export async function screenTexts(args = {}) {
-  const response = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
+  const response = await callWda(accessibilityArgs(args), "GET", ["/session/:sessionId/source", "/source"]);
   const xml = response.data?.value || response.data;
   if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
   return jsonText(screenTextsFromXml(xml));

@@ -283,7 +283,7 @@ export const tools = {
     handler: toolScreenshot,
   },
   ivista_observe: {
-    description: "Capture a complete agent checkpoint: WDA status, screenshot artifact, source artifact, visible texts, and active app info.",
+    description: "Capture a screenshot-first agent checkpoint. Source and visible texts are best-effort with a short Accessibility timeout.",
     inputSchema: {
       type: "object",
       properties: {

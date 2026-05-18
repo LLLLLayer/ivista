@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { findSourceMatches, findTextSuggestions, screenTextsFromXml } from "../src/accessibility.mjs";
+import {
+  DEFAULT_ACCESSIBILITY_TIMEOUT_MS,
+  findSourceMatches,
+  findTextSuggestions,
+  screenTextsFromXml,
+} from "../src/accessibility.mjs";
 
 const xml = `
 <AppiumAUT>
@@ -32,4 +37,8 @@ test("extracts visible screen texts", () => {
   const payload = screenTextsFromXml(xml);
   assert.deepEqual(payload.texts, ["Settings", "Language & Region"]);
   assert.equal(payload.elements.length, 2);
+});
+
+test("uses a short default accessibility timeout", () => {
+  assert.equal(DEFAULT_ACCESSIBILITY_TIMEOUT_MS, 5000);
 });

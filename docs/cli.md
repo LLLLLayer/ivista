@@ -133,8 +133,8 @@ Use `observe` at decision points, before risky actions, after navigation, and wh
 ## Waits
 
 ```bash
-ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
-ivista wait gone "Loading" [--port 8100] [--timeout 10000]
+ivista wait text "Wi-Fi" [--port 8100] [--timeout 5000]
+ivista wait gone "Loading" [--port 8100] [--timeout 5000]
 ivista wait idle [--port 8100] [--stable-ms 1000] [--poll-ms 500]
 ivista wait app --bundle-id com.apple.Preferences [--port 8100]
 ```

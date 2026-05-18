@@ -29,10 +29,10 @@ Usage:
   ivista screen shot [--port 8100] [--output /tmp/ivista.png]
   ivista screen source [--port 8100]
   ivista screen texts [--port 8100]
-  ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
-  ivista wait gone "Loading" [--port 8100] [--timeout 10000]
-  ivista wait idle [--port 8100] [--stable-ms 1000]
-  ivista wait app --bundle-id com.apple.Preferences
+  ivista wait text "Wi-Fi" [--port 8100] [--timeout 5000]
+  ivista wait gone "Loading" [--port 8100] [--timeout 5000]
+  ivista wait idle [--port 8100] [--stable-ms 1000] [--timeout 5000]
+  ivista wait app --bundle-id com.apple.Preferences [--timeout 5000]
   ivista act home [--port 8100]
   ivista act tap --x 120 --y 500
   ivista act tap --text "Wi-Fi"

@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the current release:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.7
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.8
 ivista doctor
 ```
 
 Update an existing install:
 
 ```bash
-ivista update --ref v1.0.7
+ivista update --ref v1.0.8
 ```
 
 ## Quick Start
@@ -120,8 +120,8 @@ For tight action sequences, prefer targeted waits instead of observing after eve
 
 ```bash
 ivista wait idle --port <port> --timeout 15000
-ivista wait text "About" --port <port> --timeout 10000
-ivista wait gone "Loading" --port <port> --timeout 10000
+ivista wait text "About" --port <port> --timeout 5000
+ivista wait gone "Loading" --port <port> --timeout 5000
 ivista wait app --bundle-id com.apple.Preferences --port <port>
 ```
 
@@ -190,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a release:
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v1.0.7
+codex plugin marketplace add LLLLLayer/ivista --ref v1.0.8
 ```
 
 Claude Code:

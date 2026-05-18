@@ -360,6 +360,7 @@ function printGeneric(commandKey, payload) {
     }
     if (payload.screenshot?.artifact?.path) console.log(`screenshot: ${asPath(payload.screenshot.artifact.path)}`);
     if (payload.source?.artifact?.path) console.log(`source: ${asPath(payload.source.artifact.path)}`);
+    else if (payload.source?.error) console.log(`source: skipped (${payload.source.error})`);
     if (payload.artifacts?.texts?.path) console.log(`texts: ${asPath(payload.artifacts.texts.path)}`);
     console.log(`texts: ${payload.textCount || 0}`);
     console.log(`elements: ${payload.elementCount || 0}`);

@@ -22,13 +22,15 @@ If exactly one connected real device is visible and `ivista device diagnose --de
 
 ## Operation Strategy
 
-Default to `auto`: visual-led, Accessibility-assisted.
+Default to `auto`: vision-first, Accessibility-fallback.
 
-In `auto`, treat the screenshot as the source of truth for what is visibly on screen. Use Accessibility source/texts as an actuator and confirmation layer when it gives a reliable text or label match. Use coordinates when the target is visual-only, icon-only, custom-rendered, or poorly represented in Accessibility.
+In `auto`, treat the screenshot as the source of truth for what is visibly on screen. Do not start normal operation with `act tap --text`, `screen texts`, or `screen source`. Use coordinates when the visual target is clear. Use Accessibility source/texts only after the visual route is ambiguous, fails, or the user explicitly asks for text/label-based operation.
 
 Use `vision-first` when the user asks to operate by sight, screenshot, visual target, coordinates, or says not to rely on Accessibility. In this mode, observe, inspect the screenshot, calculate the target point, act by coordinates or gestures, then observe or wait again.
 
-Use `accessibility-first` when the user asks to tap by text, use Accessibility, avoid coordinates, or operate by labels. In this mode, prefer `screen texts`, `wait text`, `wait gone`, and semantic actions such as `act tap --text`, `--contains`, or `--regex`. Keep Accessibility lookup timeouts short during normal operation, usually `--timeout 5000`, unless the user is waiting for a real loading state.
+Use `accessibility-first` when the user asks to tap by text, use Accessibility, avoid coordinates, or operate by labels. In this mode, prefer `screen texts`, `wait text`, `wait gone`, and semantic actions such as `act tap --text`, `--contains`, or `--regex`.
+
+Accessibility/source/text lookups default to 5 seconds. Keep examples at `--timeout 5000`, and only use longer waits for real loading states.
 
 ## Simulator Device Flow
 
@@ -69,7 +71,7 @@ Observe before acting when the current screen is uncertain or when the next acti
 ivista observe --port <port>
 ```
 
-`observe` captures a screenshot artifact, source artifact, visible text snapshot, active app info, and WDA status into the current run directory. Use `--json` when an Agent needs artifact paths and structured text candidates.
+`observe` is screenshot-first. It captures a screenshot artifact, WDA status, and active app info into the current run directory. It also tries to capture source and visible text snapshots with a short Accessibility timeout; if source is slow or broken, `observe` still succeeds with the screenshot and reports the source error. Use `--json` when an Agent needs artifact paths.
 
 Use lower-level reads only when needed:
 
@@ -98,11 +100,11 @@ ivista act input "hello" --port <port>
 ivista act swipe --port <port> --direction up
 ivista wait text "Done" --port <port> --timeout 5000
 ivista wait gone "Loading" --port <port> --timeout 5000
-ivista wait idle --port <port> --stable-ms 1000 --timeout 10000
-ivista wait app --port <port> --bundle-id com.example.app --timeout 10000
+ivista wait idle --port <port> --stable-ms 1000 --timeout 5000
+ivista wait app --port <port> --bundle-id com.example.app --timeout 5000
 ```
 
-In the default `auto` strategy, observe first, use the screenshot to decide what should happen, and use `--text`, `--contains`, or `--regex` only when the intended target is clearly represented in Accessibility. Use coordinates when the app is a game, canvas, custom-rendered screen, icon-heavy view, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
+In the default `auto` strategy, observe first, use the screenshot to decide what should happen, and tap by coordinates when the visual target is clear. Use `--text`, `--contains`, or `--regex` only after the visual route is ambiguous or fails, or when the user asks for text/label-based operation. Use coordinates when the app is a game, canvas, custom-rendered screen, icon-heavy view, complex feed, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
 
 Text matching is normalized for case and whitespace. When several elements match, iVista prefers visible, enabled, accessible, smaller interactive elements over broad containers; still inspect candidates when the first match is not the intended target. When text is not found, failed semantic actions return nearby candidates and fix hints. Use those candidates to retry with `--contains`, `--regex`, or `--index`.
 
@@ -242,7 +244,7 @@ For navigation tasks:
 1. Confirm WDA with `ivista wda status --port <port>`.
 2. Launch the target app if needed.
 3. Run `ivista observe --port <port> --json` when the current screen is uncertain or when a full checkpoint is useful.
-4. In the default `auto` strategy, inspect the screenshot first, then use Accessibility selectors only when the visible target has a reliable label/text match.
+4. In the default `auto` strategy, inspect the screenshot first and avoid Accessibility selectors unless the visual route is ambiguous, failed, or explicitly requested.
 5. Prefer `wait idle`, `wait text`, `wait gone`, or `wait app` for tight action sequences.
 6. Tap or gesture by coordinates for visual-only controls, and by semantic selectors for stable text/label controls.
 7. Observe again after page transitions, alert handling, important state changes, failed semantic actions, or before exporting a report.

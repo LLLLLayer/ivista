@@ -23,14 +23,14 @@ Do not use iVista for generic web browser automation. Use browser tools for web 
 
 ## Operation Strategy
 
-Default to `auto`: visual-led, Accessibility-assisted. Use screenshots from `ivista observe --json` as the source of truth for the visible screen, then use Accessibility text/source when it gives a reliable selector for the target. Tap by coordinates when the target is visual-only, icon-only, custom-rendered, or poorly labeled.
+Default to `auto`: vision-first, Accessibility-fallback. Do not start normal operation with `act tap --text` or `screen texts`. Use screenshots from `ivista observe --json` or `screen shot` as the source of truth for the visible screen, tap by coordinates when the visual target is clear, and only use Accessibility text/source after the visual route is ambiguous, fails, or the user explicitly asks for label/text-based operation.
 
 Honor explicit user preference:
 
 - Use vision-first when the user asks to operate by sight, screenshot, visual target, coordinates, or says not to rely on Accessibility.
 - Use accessibility-first when the user asks to tap by text, use Accessibility, avoid coordinates, or operate by labels.
 
-Keep Accessibility lookup timeouts short during operation, usually `--timeout 5000`, unless the user is waiting for a real loading state.
+Keep Accessibility lookup timeouts short during operation. The CLI defaults Accessibility/source/text lookups to 5 seconds; pass `--timeout 5000` in examples and only use longer waits for real loading states.
 
 ## Safety
 

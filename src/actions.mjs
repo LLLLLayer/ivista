@@ -7,6 +7,7 @@ import { callWda } from "./sessions.mjs";
 import {
   candidateSummary,
   clickWdaElement,
+  DEFAULT_ACCESSIBILITY_TIMEOUT_MS,
   elementNotFoundPayload,
   findWdaElementIds,
   hasTextSelector,
@@ -36,7 +37,7 @@ export async function toolScreenshot(args = {}) {
 }
 
 export async function toolSource(args = {}) {
-  const response = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
+  const response = await callWda({ ...args, timeoutMs: args.timeoutMs || DEFAULT_ACCESSIBILITY_TIMEOUT_MS }, "GET", ["/session/:sessionId/source", "/source"]);
   const value = response.data?.value || response.data;
   const artifact = typeof value === "string" ? saveRunArtifact(args, "source", "xml", value) : null;
   return jsonText({ ok: true, artifact, response: response.data });
@@ -70,13 +71,24 @@ export async function toolObserve(args = {}) {
   if (typeof screenshotValue !== "string") throw new Error("WDA screenshot response did not contain base64 image data.");
   artifacts.screenshot = saveRunArtifact(args, "observe-screenshot", "png", Buffer.from(screenshotValue, "base64"));
 
-  const sourceResponse = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
-  const sourceValue = sourceResponse.data?.value || sourceResponse.data;
-  if (typeof sourceValue !== "string") throw new Error("WDA source response did not contain XML text.");
-  artifacts.source = saveRunArtifact(args, "observe-source", "xml", sourceValue);
-
-  const textsPayload = screenTextsFromXml(sourceValue);
-  artifacts.texts = saveRunArtifact(args, "observe-texts", "json", `${JSON.stringify(textsPayload, null, 2)}\n`);
+  let sourceValue = "";
+  let sourceError = null;
+  let textsPayload = { ok: true, texts: [], elements: [] };
+  try {
+    const sourceResponse = await callWda(
+      { ...args, timeoutMs: args.timeoutMs || DEFAULT_ACCESSIBILITY_TIMEOUT_MS },
+      "GET",
+      ["/session/:sessionId/source", "/source"],
+    );
+    const value = sourceResponse.data?.value || sourceResponse.data;
+    if (typeof value !== "string") throw new Error("WDA source response did not contain XML text.");
+    sourceValue = value;
+    artifacts.source = saveRunArtifact(args, "observe-source", "xml", sourceValue);
+    textsPayload = screenTextsFromXml(sourceValue);
+    artifacts.texts = saveRunArtifact(args, "observe-texts", "json", `${JSON.stringify(textsPayload, null, 2)}\n`);
+  } catch (error) {
+    sourceError = error.message;
+  }
 
   const activeApp = await readActiveAppInfo(args);
   return jsonText({
@@ -89,8 +101,9 @@ export async function toolObserve(args = {}) {
       base64Bytes: screenshotValue.length,
     },
     source: {
-      artifact: artifacts.source,
+      artifact: artifacts.source || null,
       chars: sourceValue.length,
+      error: sourceError,
     },
     texts: summarizeTexts(textsPayload),
     textCount: textsPayload.texts?.length || 0,
@@ -328,7 +341,7 @@ export async function toolWaitApp(args = {}) {
   const bundleId = args.bundleId || args.text;
   if (!bundleId) throw new Error("Provide --bundle-id <id>.");
   const startedAt = Date.now();
-  const timeoutMs = Number(args.timeoutMs || 10000);
+  const timeoutMs = Number(args.timeoutMs || DEFAULT_ACCESSIBILITY_TIMEOUT_MS);
   let last = null;
   while (Date.now() - startedAt <= timeoutMs) {
     const remaining = Math.max(500, timeoutMs - (Date.now() - startedAt));

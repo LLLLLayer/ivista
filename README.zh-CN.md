@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 安装当前版本：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.7
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.8
 ivista doctor
 ```
 
 更新已有安装：
 
 ```bash
-ivista update --ref v1.0.7
+ivista update --ref v1.0.8
 ```
 
 ## 快速开始
@@ -120,8 +120,8 @@ ivista observe --port <port> --json
 
 ```bash
 ivista wait idle --port <port> --timeout 15000
-ivista wait text "关于本机" --port <port> --timeout 10000
-ivista wait gone "Loading" --port <port> --timeout 10000
+ivista wait text "关于本机" --port <port> --timeout 5000
+ivista wait gone "Loading" --port <port> --timeout 5000
 ivista wait app --bundle-id com.apple.Preferences --port <port>
 ```
 
@@ -190,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 然后打开 Codex，在 plugin marketplace 里安装 `iVista`。固定到某个版本：
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v1.0.7
+codex plugin marketplace add LLLLLayer/ivista --ref v1.0.8
 ```
 
 Claude Code：
