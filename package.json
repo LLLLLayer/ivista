@@ -14,6 +14,10 @@
     "docs/README.md",
     "docs/cli.md",
     "docs/cli.zh-CN.md",
+    "docs/troubleshooting.md",
+    "docs/troubleshooting.zh-CN.md",
+    "docs/development.md",
+    "docs/development.zh-CN.md",
     ".agents/plugins/marketplace.json",
     ".claude-plugin/marketplace.json"
   ],

@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "iVista",
     "shortDescription": "Operate iOS Simulator and devices from Codex.",
-    "longDescription": "iVista teaches Codex how to install and use the ivista CLI for discovering iOS Simulators and real iOS devices, preparing WebDriverAgent, finding signing settings from host iOS projects, and performing WDA-backed screenshots, source reads, taps, text input, gestures, and app actions.",
+    "longDescription": "iVista teaches Codex how to install and use the ivista CLI for discovering iOS Simulators and real iOS devices, preparing WebDriverAgent, cleaning up stale WDA ports and runners, finding signing settings from host iOS projects, and performing WDA-backed screenshots, source reads, taps, text input, gestures, and app actions.",
     "developerName": "iVista contributors",
     "category": "Developer Tools",
     "capabilities": [
@@ -36,6 +36,7 @@
       "Use iVista to inspect my iOS Simulator.",
       "Install and verify iVista for my iOS project.",
       "Start WDA on the booted Simulator.",
+      "Clean up a stuck iVista WDA port.",
       "Take a screenshot and tell me what to tap next."
     ],
     "brandColor": "#2563EB"

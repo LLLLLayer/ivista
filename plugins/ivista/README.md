@@ -8,7 +8,7 @@ This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, `.clau
 
 - Codex reads `.codex-plugin/plugin.json`.
 - Claude Code reads `.claude-plugin/plugin.json` and discovers the shared `skills/` directory.
-- Both hosts use the same `ivista-install`, `ivista-operate`, and `ivista-report` skill content.
+- Both hosts use the same `ivista-install`, `ivista-operate`, `ivista-cleanup`, and `ivista-report` skill content.
 - The plugin installs agent instructions only. Install the `ivista` CLI separately.
 
 Install for Codex:
@@ -43,6 +43,7 @@ The Claude Code skill names are namespaced by the plugin name:
 ```text
 /ivista:ivista-install
 /ivista:ivista-operate
+/ivista:ivista-cleanup
 /ivista:ivista-report
 ```
 
@@ -148,4 +149,5 @@ Use `--wda-path` only for offline use, enterprise forks, or WDA debugging.
 
 - `ivista-install`: install, update, diagnose, repair, and prepare Simulator or real-device prerequisites.
 - `ivista-operate`: operate a Simulator or real device after the CLI is available.
+- `ivista-cleanup`: recover from stale WDA runners, dead ports, crashed Simulator sessions, and stuck forwarding.
 - `ivista-report`: export Markdown reports or zip debug bundles from project/conversation/run artifacts.

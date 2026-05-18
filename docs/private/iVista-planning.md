@@ -72,6 +72,10 @@ docs/README.md
 docs/private/iVista-planning.md
 docs/cli.md
 docs/cli.zh-CN.md
+docs/troubleshooting.md
+docs/troubleshooting.zh-CN.md
+docs/development.md
+docs/development.zh-CN.md
 README.md
 README.zh-CN.md
 ```

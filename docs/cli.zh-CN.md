@@ -15,7 +15,7 @@ ivista --help
 
 - `version`：查看当前安装的 CLI 版本。
 - `update`：更新 Git 安装的 CLI 到指定 ref。
-- `doctor`：检查本机依赖、Xcode 工具、Simulator、WDA 缓存和常见修复建议。
+- `doctor`：检查本机依赖、Xcode 工具、模拟器设备、WDA 缓存和常见修复建议。
 - `--json`：让支持的命令输出机器可读 JSON。
 
 ## Run 和报告
@@ -38,7 +38,7 @@ ivista run export [--format markdown|zip] [--output report.md]
 ~/.ivista/projects/<project-key>/conversations/<conversation-id>/exports/
 ```
 
-## 模拟器
+## 模拟器设备
 
 ```bash
 ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
@@ -50,11 +50,11 @@ ivista simulator boot --udid <simulator-udid>
 
 - `simulator list`：默认展示去重后的精简列表。
 - `--all`：展示所有 runtime 和重复设备。
-- `--booted`：只展示正在运行的模拟器。
+- `--booted`：只展示正在运行的模拟器设备。
 - `simulator boot`：打开交互式选择器，用上下键选择，回车启动。
 - `simulator boot 1`：按展示序号启动。
 
-## 真机
+## 真实设备
 
 ```bash
 ivista device list [--connected] [--json]
@@ -67,7 +67,7 @@ ivista device locked
 ivista device press --name volumeUp
 ```
 
-真机 WDA 启动失败、无线连接不确定、端口不通时，先跑 `device diagnose`。它会检查设备发现、tunnel 线索、WDA 可达性，以及可能的签名或传输问题。
+真实设备 WDA 启动失败、无线连接不确定、端口不通时，先跑 `device diagnose`。它会检查设备发现、tunnel 线索、WDA 可达性，以及可能的签名或传输问题。
 
 ## WebDriverAgent
 
@@ -80,7 +80,7 @@ ivista wda stop [--port 8100]
 ivista wda status [--port 8100]
 ```
 
-模拟器示例：
+模拟器设备示例：
 
 ```bash
 ivista simulator boot --name "iPhone 17"
@@ -89,7 +89,7 @@ ivista wda start --simulator "iPhone 17" --auto-port --wait 180000
 ivista wda status --port <port>
 ```
 
-真机示例：
+真实设备示例：
 
 ```bash
 ivista device list --connected
@@ -194,15 +194,15 @@ ivista app terminate --bundle-id com.example.app
 ## 常用参数
 
 - `--json`：输出原始 JSON。
-- `--simulator <name|udid>`：目标 Simulator 名称或 UDID。
-- `--device <name|udid>`：目标真机名称或 UDID。
+- `--simulator <name|udid>`：目标模拟器设备名称或 UDID。
+- `--device <name|udid>`：目标真实设备名称或 UDID。
 - `--bundle-id <id>`：App bundle id。
 - `--base-url <url>`：覆盖 WDA base URL。
 - `--port <port>`：WDA 端口，默认 `8100`。
 - `--auto-port`：自动选择可用 WDA 端口。
 - `--project <path>`、`--conversation <id>`、`--run <id>`、`--title <title>`：设置 run 元信息。
-- `--workspace`、`--ios-project`、`--scheme`、`--signing-team`、`--wda-bundle-id`：真机签名参数。
-- `--network`、`--usb`：强制真机传输模式。
+- `--workspace`、`--ios-project`、`--scheme`、`--signing-team`、`--wda-bundle-id`：真实设备签名参数。
+- `--network`、`--usb`：强制真实设备传输模式。
 - `--text <text>`、`--contains <text>`、`--regex <pattern>`、`--index <n>`：按 Accessibility 的 `name`、`label` 或 `value` 匹配。
 - `--stable-ms <ms>`、`--poll-ms <ms>`：调整等待和 idle 轮询。
 - `--wda-path <path>`、`--repo <url>`、`--ref <ref>`：覆盖 WDA 来源。

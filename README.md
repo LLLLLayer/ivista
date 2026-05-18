@@ -176,32 +176,6 @@ ivista wda start \
 
 Wireless devices work when `devicectl` reports the device over the local network and exposes a CoreDevice tunnel address. Use `--usb` to force USB forwarding.
 
-## CLI Reference
-
-The README keeps only the getting-started path. See [docs/cli.md](docs/cli.md) for the full command reference, examples, and common options. A Chinese version is available at [docs/cli.zh-CN.md](docs/cli.zh-CN.md).
-
-## WebDriverAgent
-
-iVista manages WebDriverAgent automatically. Users should not clone WDA manually for the default path.
-
-Defaults:
-
-- WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
-- WDA ref: `ivista-wda-v0.1.3`
-- iVista home: `~/.ivista`
-- WDA cache: `~/.ivista/cache/webdriveragent/<ref>/`
-- WDA port: `8100`
-
-The CLI pins a known-good WDA ref. The WDA fork evolves independently and is downloaded into the local cache at runtime.
-
-Override WDA only when needed:
-
-```bash
-ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
-ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
-ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
-```
-
 ## Agent Plugins
 
 The plugin is skill-only: it installs agent instructions, not the CLI runtime. Install the CLI separately first.
@@ -236,7 +210,34 @@ Claude Code skill names:
 ```text
 /ivista:ivista-install
 /ivista:ivista-operate
+/ivista:ivista-cleanup
 /ivista:ivista-report
+```
+
+## CLI Reference
+
+The README keeps only the getting-started path. See [docs/cli.md](docs/cli.md) for the full command reference, examples, and common options. A Chinese version is available at [docs/cli.zh-CN.md](docs/cli.zh-CN.md).
+
+## WebDriverAgent
+
+iVista manages WebDriverAgent automatically. Users should not clone WDA manually for the default path.
+
+Defaults:
+
+- WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
+- WDA ref: `ivista-wda-v0.1.3`
+- iVista home: `~/.ivista`
+- WDA cache: `~/.ivista/cache/webdriveragent/<ref>/`
+- WDA port: `8100`
+
+The CLI pins a known-good WDA ref. The WDA fork evolves independently and is downloaded into the local cache at runtime.
+
+Override WDA only when needed:
+
+```bash
+ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
+ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
+ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
 ```
 
 ## Configuration
@@ -254,44 +255,11 @@ IVISTA_WDA_PORT=8200 ivista wda start --simulator "iPhone 17"
 IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista observe
 ```
 
-## Troubleshooting
+## More Docs
 
-- Run `ivista doctor` first.
-- Use `ivista wda start --auto-port` if port `8100` is busy.
-- Use `ivista wda stop --port <port>` to clean a stale runner.
-- Use `ivista observe --json` instead of separate screenshot/source/text commands when working with an agent.
-- Use `ivista device diagnose --device <udid>` before debugging real-device or wireless failures.
-- If Xcode cannot build to a real device, unlock the device, trust this Mac, enable Developer Mode, and confirm the selected Xcode supports the iOS version.
-
-## Development
-
-```bash
-npm install
-npm run check
-npm run check:release
-npm run doctor
-```
-
-Run from the checkout:
-
-```bash
-node bin/ivista.mjs version
-node bin/ivista.mjs simulator list
-```
-
-Keep the WDA fork as a separate ignored checkout:
-
-```text
-ivista/
-  ivista-wda/  # separate git repo, ignored by this repo
-```
-
-## Scope
-
-- Simulator is the fastest and most reliable path for local agent validation.
-- Real-device USB and CoreDevice wireless paths work, but signing, trust, Developer Mode, and Xcode/iOS compatibility can still require local setup.
-- iVista performs deterministic WDA actions. It does not include a built-in visual planner.
-- Recipes, app debug hooks, and device-farm style execution are future work.
+- [CLI Reference](docs/cli.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Development](docs/development.md)
 
 ## License And Open Source Usage
 
