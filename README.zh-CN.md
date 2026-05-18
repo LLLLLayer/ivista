@@ -11,7 +11,7 @@ iVista 是一个 CLI 优先的 iOS 控制层，面向人类开发者和 Coding A
 - 模拟器设备和真实设备使用同一套 CLI。
 - 自动下载、缓存、启动、停止和检查 WebDriverAgent。
 - `ivista observe` 一次性获取截图、source、可见文本、当前 App 和 WDA 状态。
-- 确定性操作：文本/坐标点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、弹窗、设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
+- 确定性操作：文本/坐标点击、滚动查找后点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、弹窗、设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
 - Agent 友好的等待：文本出现、文本消失、屏幕稳定、指定 App 激活。
 - 按项目/对话/run 归档素材到 `~/.ivista`，并支持 Markdown 和 zip 导出。
 - 提供 skill-only Codex / Claude Code plugin，让 Agent 学会安装和操作同一个 `ivista` CLI。
@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 安装当前版本：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.31
 ivista doctor
 ```
 
 更新已有安装：
 
 ```bash
-ivista update --ref v0.1.30
+ivista update --ref v0.1.31
 ```
 
 ## 快速开始
@@ -64,6 +64,7 @@ ivista observe
 ```bash
 ivista act home
 ivista act tap --text "设置"
+ivista act tap --text "通用" --scroll
 ivista wait app --bundle-id com.apple.Preferences
 ivista wait idle
 ivista observe --json
@@ -189,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 然后打开 Codex，在 plugin marketplace 里安装 `iVista`。固定到某个版本：
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v0.1.30
+codex plugin marketplace add LLLLLayer/ivista --ref v0.1.31
 ```
 
 Claude Code：

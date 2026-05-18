@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-marketplace.json",
   "name": "ivista",
   "description": "iVista plugins for iOS Simulator and iPhone/iPad automation.",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "owner": {
     "name": "iVista contributors",
     "email": "maintainers@example.com"
@@ -12,7 +12,7 @@
       "name": "ivista",
       "source": "./plugins/ivista",
       "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
-      "version": "0.1.30",
+      "version": "0.1.31",
       "author": {
         "name": "iVista contributors",
         "email": "maintainers@example.com",

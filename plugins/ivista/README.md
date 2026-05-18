@@ -17,7 +17,7 @@ Install for Codex:
 codex plugin marketplace add LLLLLayer/ivista
 ```
 
-Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v0.1.30`.
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v0.1.31`.
 
 For local development from this checkout:
 
@@ -50,7 +50,7 @@ The Claude Code skill names are namespaced by the plugin name:
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.31
 ivista doctor
 ```
 
@@ -78,10 +78,12 @@ ivista doctor
 - `ivista device list`
 - `ivista device diagnose`
 - `ivista wda cache status`
+- `ivista wda list`
 - `ivista wda prepare`
 - `ivista wda start`
 - `ivista wda stop`
 - `ivista wda status`
+- `ivista cleanup`
 - `ivista observe`
 - `ivista screen shot`
 - `ivista screen source`
@@ -92,6 +94,7 @@ ivista doctor
 - `ivista wait app`
 - `ivista act home`
 - `ivista act tap`
+- `ivista act tap --text ... --scroll`
 - `ivista act double-tap`
 - `ivista act two-finger-tap`
 - `ivista act long-press`

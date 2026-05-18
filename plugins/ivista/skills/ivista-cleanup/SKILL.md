@@ -14,7 +14,9 @@ This plugin is skill-only. It does not expose MCP tools. Use shell commands and 
 Read [references/cleanup.md](references/cleanup.md), then follow the smallest relevant cleanup path:
 
 - Check the current CLI and WDA status.
+- Inspect known sessions with `ivista wda list`.
 - Stop known iVista/WDA sessions with `ivista wda stop`.
+- Prefer `ivista cleanup --port <port>` for dead ports before manual PID cleanup.
 - Inspect busy ports before killing anything.
 - Clean Simulator WDA runner state when WDA crashed on a Simulator.
 - Clean real-device forwarding only when the process is clearly tied to iVista/WDA.
@@ -25,13 +27,15 @@ Read [references/cleanup.md](references/cleanup.md), then follow the smallest re
 ```bash
 ivista version
 ivista doctor
+ivista wda list
 ivista wda status --port 8100
-lsof -nP -iTCP:8100 -sTCP:LISTEN
+ivista cleanup --port 8100
 ```
 
 ## Safety
 
 - Prefer `ivista wda stop --port <port>` before process-level cleanup.
+- Prefer `ivista cleanup --port <port>` before manual `lsof`/`kill` cleanup.
 - Do not run broad commands like `killall node`, `killall xcodebuild`, or `rm -rf ~/.ivista`.
 - Kill only exact PIDs that were just identified as stale iVista/WDA-related processes.
 - Ask before deleting caches or run artifacts.

@@ -73,11 +73,13 @@ Use `device diagnose` when real-device WDA startup or wireless routing is unclea
 
 ```bash
 ivista wda cache status
+ivista wda list
 ivista wda prepare [--ref ivista-wda-v0.1.3]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
 ivista wda stop [--port 8100]
 ivista wda status [--port 8100]
+ivista cleanup [--port 8100]
 ```
 
 Simulator example:
@@ -156,6 +158,7 @@ ivista act home [--port 8100]
 ivista act tap --x 120 --y 500
 ivista act tap --text "Wi-Fi"
 ivista act tap --contains "Language"
+ivista act tap --text "Language & Region" --scroll
 ivista act double-tap --x 120 --y 500
 ivista act double-tap --text "Photos"
 ivista act two-finger-tap
@@ -200,6 +203,7 @@ ivista app terminate --bundle-id com.example.app
 - `--base-url <url>`: override the WDA base URL.
 - `--port <port>`: WDA port, defaulting to `8100`.
 - `--auto-port`: find an available WDA port automatically.
+- `--scroll`, `--max-scrolls <n>`, `--scroll-direction <up|down|left|right>`: scroll while searching for text actions.
 - `--project <path>`, `--conversation <id>`, `--run <id>`, `--title <title>`: set run metadata.
 - `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, `--wda-bundle-id`: real-device signing inputs.
 - `--network`, `--usb`: force real-device transport mode.

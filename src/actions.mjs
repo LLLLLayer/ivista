@@ -130,18 +130,37 @@ async function coordinateLongPress(args, point) {
 
 async function sourcePointForText(args, selector) {
   const selectedIndex = indexFromArgs(args);
-  const { matches, suggestions } = await readSourceMatches(args, selector);
-  const candidate = matches[selectedIndex - 1];
-  if (!candidate) return { ok: false, matches, suggestions };
-  if (!candidate.center) {
-    return {
-      ok: false,
-      matches,
-      suggestions,
-      error: `Matched ${selector.mode} "${selector.text}", but the element has no usable rect.`,
-    };
+  const maxScrolls = args.scroll ? Number(args.maxScrolls || 5) : 0;
+  let lastMatches = [];
+  let lastSuggestions = [];
+  for (let attempt = 0; attempt <= maxScrolls; attempt += 1) {
+    const { matches, suggestions } = await readSourceMatches(args, selector);
+    lastMatches = matches;
+    lastSuggestions = suggestions;
+    const candidate = matches[selectedIndex - 1];
+    if (candidate) {
+      if (!candidate.center) {
+        return {
+          ok: false,
+          matches,
+          suggestions,
+          scrolled: attempt,
+          error: `Matched ${selector.mode} "${selector.text}", but the element has no usable rect.`,
+        };
+      }
+      return { ok: true, candidate, matches, suggestions, point: candidate.center, scrolled: attempt };
+    }
+    if (attempt < maxScrolls) {
+      const direction = args.scrollDirection || "up";
+      const points = swipePoints({ ...args, direction });
+      await callWda(args, "POST", ["/session/:sessionId/wda/dragfromtoforduration", "/wda/dragfromtoforduration"], {
+        ...points,
+        duration: Number(args.duration || 0.25),
+      });
+      await new Promise((resolve) => setTimeout(resolve, Number(args.pollMs || 400)));
+    }
   }
-  return { ok: true, candidate, matches, suggestions, point: candidate.center };
+  return { ok: false, matches: lastMatches, suggestions: lastSuggestions, scrolled: maxScrolls };
 }
 
 async function textCoordinateGesture(args, gestureName, invoke) {
@@ -158,6 +177,7 @@ async function textCoordinateGesture(args, gestureName, invoke) {
     gesture: gestureName,
     selector,
     point: target.point,
+    scrolled: target.scrolled || 0,
     match: candidateSummary(target.candidate, indexFromArgs(args) - 1),
     response: response.data,
   });
@@ -177,6 +197,7 @@ export async function toolTapText(args = {}) {
         method: "rect-center",
         selector,
         point: target.point,
+        scrolled: target.scrolled || 0,
         match: candidateSummary(target.candidate, selectedIndex - 1),
         response: response.data,
       });
@@ -220,6 +241,7 @@ export async function toolTapText(args = {}) {
     method: "rect-center",
     selector,
     point: target.point,
+    scrolled: target.scrolled || 0,
     match: candidateSummary(target.candidate, selectedIndex - 1),
     error: coordinateTapError || "Matched element, but tap failed.",
     hints: ["Retry with coordinate tap using the printed point.", "If another element is intended, pass --index <n> after inspecting candidates with `ivista screen texts`."],

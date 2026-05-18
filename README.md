@@ -11,7 +11,7 @@ Use it when you want an agent to see the current mobile screen, wait for UI stat
 - Simulator and real-device workflows through one CLI.
 - Automatic WebDriverAgent download, cache, start, stop, and status checks.
 - One-command observation with screenshot, source, visible texts, active app, and WDA status.
-- Deterministic actions: text/coordinate tap, double tap, two-finger tap, long press, drag, pinch, rotate, input, swipe, Home, alerts, device info, lock/unlock, hardware buttons, app launch, and app termination.
+- Deterministic actions: text/coordinate tap, scroll-to-text tap, double tap, two-finger tap, long press, drag, pinch, rotate, input, swipe, Home, alerts, device info, lock/unlock, hardware buttons, app launch, and app termination.
 - Agent-friendly waits: text appears, text disappears, screen idle, and active app.
 - Project/conversation/run artifacts under `~/.ivista`, with Markdown and zip exports.
 - Skill-only plugins for Codex and Claude Code that teach agents how to install and operate the same CLI.
@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the current release:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.31
 ivista doctor
 ```
 
 Update an existing install:
 
 ```bash
-ivista update --ref v0.1.30
+ivista update --ref v0.1.31
 ```
 
 ## Quick Start
@@ -64,6 +64,7 @@ Drive the Simulator:
 ```bash
 ivista act home
 ivista act tap --text "Settings"
+ivista act tap --text "General" --scroll
 ivista wait app --bundle-id com.apple.Preferences
 ivista wait idle
 ivista observe --json
@@ -189,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a release:
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v0.1.30
+codex plugin marketplace add LLLLLayer/ivista --ref v0.1.31
 ```
 
 Claude Code:

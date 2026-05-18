@@ -13,6 +13,7 @@ const booleanOptions = new Set([
   "usb",
   "allow-provisioning-updates",
   "create",
+  "scroll",
 ]);
 
 const aliases = {
@@ -35,6 +36,8 @@ const aliases = {
   "key-names": "keyNames",
   "stable-ms": "stableMs",
   "poll-ms": "pollMs",
+  "max-scrolls": "maxScrolls",
+  "scroll-direction": "scrollDirection",
 };
 
 const numericOptions = [
@@ -57,6 +60,7 @@ const numericOptions = [
   "index",
   "stableMs",
   "pollMs",
+  "maxScrolls",
 ];
 
 export function parseArgs(argv) {

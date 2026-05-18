@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
   "type": "module",
   "bin": {
@@ -24,7 +24,8 @@
   "scripts": {
     "check": "find src bin -name '*.mjs' -print0 | xargs -0 -n1 node --check",
     "check:release": "node scripts/check-release.mjs",
-    "doctor": "node bin/ivista.mjs doctor"
+    "doctor": "node bin/ivista.mjs doctor",
+    "test": "node --test tests/*.test.mjs"
   },
   "keywords": [
     "ios",

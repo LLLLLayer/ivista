@@ -9,6 +9,7 @@ Start with non-destructive checks:
 ```bash
 ivista version
 ivista doctor
+ivista wda list
 ivista wda status --port 8100
 lsof -nP -iTCP:8100 -sTCP:LISTEN
 ```
@@ -24,6 +25,7 @@ lsof -nP -iTCP -sTCP:LISTEN | rg 'WebDriverAgent|xcodebuild|iproxy|8100|8200|830
 Always prefer the CLI cleanup path first:
 
 ```bash
+ivista cleanup --port <port>
 ivista wda stop --port <port>
 ivista wda status --port <port>
 ```

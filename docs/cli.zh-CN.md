@@ -73,11 +73,13 @@ ivista device press --name volumeUp
 
 ```bash
 ivista wda cache status
+ivista wda list
 ivista wda prepare [--ref ivista-wda-v0.1.3]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
 ivista wda stop [--port 8100]
 ivista wda status [--port 8100]
+ivista cleanup [--port 8100]
 ```
 
 模拟器设备示例：
@@ -156,6 +158,7 @@ ivista act home [--port 8100]
 ivista act tap --x 120 --y 500
 ivista act tap --text "Wi-Fi"
 ivista act tap --contains "语言"
+ivista act tap --text "语言与地区" --scroll
 ivista act double-tap --x 120 --y 500
 ivista act double-tap --text "照片"
 ivista act two-finger-tap
@@ -200,6 +203,7 @@ ivista app terminate --bundle-id com.example.app
 - `--base-url <url>`：覆盖 WDA base URL。
 - `--port <port>`：WDA 端口，默认 `8100`。
 - `--auto-port`：自动选择可用 WDA 端口。
+- `--scroll`、`--max-scrolls <n>`、`--scroll-direction <up|down|left|right>`：文本操作查找不到时滚动查找。
 - `--project <path>`、`--conversation <id>`、`--run <id>`、`--title <title>`：设置 run 元信息。
 - `--workspace`、`--ios-project`、`--scheme`、`--signing-team`、`--wda-bundle-id`：真实设备签名参数。
 - `--network`、`--usb`：强制真实设备传输模式。

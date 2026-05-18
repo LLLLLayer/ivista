@@ -8,7 +8,7 @@
 ivista doctor
 ```
 
-如果正在使用 iVista Agent Plugin，这整套流程可以交给 `ivista-cleanup` skill。
+如果正在使用 iVista Agent Plugin，这整套流程可以交给 `ivista-cleanup` skill。直接用 CLI 时，运行 `ivista cleanup --port <port>`。
 
 ## WDA 启动
 
@@ -17,7 +17,9 @@ ivista doctor
 - 跑 `ivista wda cache status`。
 - 跑 `ivista wda prepare` 刷新固定版本的 WDA checkout。
 - 如果 `8100` 端口被占用，在正常的 `ivista wda start --simulator ...` 或 `ivista wda start --device ...` 命令上加 `--auto-port`。
+- 跑 `ivista wda list` 查看保存的 session、端口、pid 和日志。
 - 用 `ivista wda stop --port <port>` 清理旧 runner。
+- 如果 stale session 或端口监听还在，用 `ivista cleanup --port <port>`。
 - 首次构建可以加长等待时间：`--wait 180000`。
 
 如果之前的 WDA runner 在模拟器设备上崩过，可以先结束旧进程，再换新端口启动：

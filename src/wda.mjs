@@ -51,6 +51,63 @@ function isProcessAlive(pid) {
   }
 }
 
+function killPid(pid, signal = "SIGTERM") {
+  if (!pid) return { pid: null, ok: true, signal, skipped: true };
+  try {
+    process.kill(pid, signal);
+    return { pid, ok: true, signal };
+  } catch (error) {
+    return { pid, ok: false, signal, error: error.message };
+  }
+}
+
+async function commandForPid(pid) {
+  if (!pid) return "";
+  const result = await runCommand("ps", ["-p", String(pid), "-o", "command="], { timeoutMs: 5000 });
+  return result.ok ? result.stdout.trim() : "";
+}
+
+function isSafeIvistaProcess(command) {
+  return /WebDriverAgent|iproxy|ivista/i.test(String(command || ""));
+}
+
+async function portListeners(port) {
+  if (!port) return [];
+  const result = await runCommand("lsof", ["-nP", `-iTCP:${Number(port)}`, "-sTCP:LISTEN"], { timeoutMs: 5000 });
+  if (!result.ok && !result.stdout) return [];
+  return result.stdout
+    .split(/\r?\n/)
+    .slice(1)
+    .filter(Boolean)
+    .map((line) => {
+      const columns = line.trim().split(/\s+/);
+      return {
+        command: columns[0] || "",
+        pid: Number(columns[1]),
+        user: columns[2] || "",
+        name: columns.slice(8).join(" "),
+        raw: line,
+      };
+    })
+    .filter((item) => Number.isFinite(item.pid));
+}
+
+async function cleanupStartedSession(targetId, spawned = {}, proxy = {}) {
+  const stopped = [];
+  if (spawned.pid) {
+    stopped.push({ kind: "xcodebuild", command: await commandForPid(spawned.pid), ...killPid(spawned.pid) });
+  }
+  if (proxy.pid) {
+    stopped.push({ kind: "proxy", command: await commandForPid(proxy.pid), ...killPid(proxy.pid) });
+  }
+  removeSessionFile(sessionFileForTarget(targetId));
+  return stopped;
+}
+
+function sessionFileForTarget(targetId) {
+  return path.join(ivistaHome(), "sessions", `${String(targetId).replace(/[^a-zA-Z0-9._-]/g, "_")}.json`);
+}
+
 function readLogTail(logPath, maxLines = 80) {
   if (!logPath) return "";
   try {
@@ -445,6 +502,7 @@ export async function toolWdaStartDevice(args = {}) {
   }
   if (progress) process.stderr.write("\n");
   const diagnostics = collectWdaDiagnostics([wdaLogPath, proxyLogPath]);
+  const cleanup = await cleanupStartedSession(device.udid, spawned, proxy);
   return jsonText({
     ok: false,
     targetType: "device",
@@ -468,6 +526,7 @@ export async function toolWdaStartDevice(args = {}) {
     hint: diagnostics.hints[0] || "Unlock the device, trust this Mac, keep Developer Mode enabled, then check the WDA and iproxy logs.",
     hints: diagnostics.hints,
     diagnostics,
+    cleanup,
   });
 }
 
@@ -577,6 +636,7 @@ export async function toolWdaStartSimulator(args = {}) {
   }
   if (progress) process.stderr.write("\n");
   const diagnostics = collectWdaDiagnostics([logPath]);
+  const cleanup = await cleanupStartedSession(device.udid, spawned);
   return jsonText({
     ok: false,
     baseUrl,
@@ -587,7 +647,45 @@ export async function toolWdaStartSimulator(args = {}) {
     hint: diagnostics.hints[0] || "If WebDriverAgentRunner crashed or the port is busy, try `ivista wda stop` and then `ivista wda start --auto-port`.",
     hints: diagnostics.hints,
     diagnostics,
+    cleanup,
   });
+}
+
+export async function toolWdaList(args = {}) {
+  const sessions = [];
+  for (const { file, data } of listSessions()) {
+    const port = sessionPort(data);
+    const baseUrl = data.baseUrl || null;
+    let reachable = false;
+    let statusError = null;
+    if (baseUrl) {
+      try {
+        const status = await httpJson("GET", `${baseUrl}/status`, undefined, args.timeoutMs || 2000);
+        reachable = status.statusCode >= 200 && status.statusCode < 300;
+      } catch (error) {
+        statusError = error.message;
+      }
+    }
+    sessions.push({
+      file,
+      targetType: data.targetType || null,
+      target: data.simulator?.udid || data.device?.udid || null,
+      name: data.simulator?.name || data.device?.name || null,
+      baseUrl,
+      port,
+      pid: data.pid || null,
+      pidAlive: isProcessAlive(data.pid),
+      proxyPid: data.proxyPid || null,
+      proxyPidAlive: isProcessAlive(data.proxyPid),
+      logPath: data.logPath || null,
+      proxyLogPath: data.proxyLogPath || null,
+      startedAt: data.startedAt || null,
+      updatedAt: data.updatedAt || null,
+      reachable,
+      statusError,
+    });
+  }
+  return jsonText({ ok: true, sessions });
 }
 
 export async function toolWdaStop(args = {}) {
@@ -603,20 +701,9 @@ export async function toolWdaStop(args = {}) {
   const targets = matching.length > 0 ? matching : [{ file: null, data: { simulator: { udid: wantedTarget || "booted" } } }];
   const stopped = [];
   for (const { file, data } of targets) {
-    if (data.pid) {
-      try {
-        process.kill(data.pid, "SIGTERM");
-      } catch {
-        // xcodebuild may already be gone.
-      }
-    }
-    if (data.proxyPid) {
-      try {
-        process.kill(data.proxyPid, "SIGTERM");
-      } catch {
-        // iproxy may already be gone.
-      }
-    }
+    const killed = [];
+    if (data.pid) killed.push({ kind: "xcodebuild", command: await commandForPid(data.pid), ...killPid(data.pid) });
+    if (data.proxyPid) killed.push({ kind: "proxy", command: await commandForPid(data.proxyPid), ...killPid(data.proxyPid) });
     let terminate = { ok: true, stderr: "", stdout: "" };
     const targetType = data.targetType || "simulator";
     const target = data.simulator?.udid || data.device?.udid || wantedTarget || "booted";
@@ -631,11 +718,68 @@ export async function toolWdaStop(args = {}) {
       target,
       pid: data.pid || null,
       proxyPid: data.proxyPid || null,
+      killed,
       ok: terminate.ok || /not running|No such process|The operation couldn/i.test(terminate.stderr),
       message: (terminate.stderr || terminate.stdout || "").trim(),
     });
   }
+  if (wantedPort) {
+    for (const listener of await portListeners(wantedPort)) {
+      if (stopped.some((item) => item.pid === listener.pid || item.proxyPid === listener.pid)) continue;
+      const command = listener.command || await commandForPid(listener.pid);
+      if (!isSafeIvistaProcess(`${listener.command} ${command}`)) {
+        stopped.push({
+          targetType: "port",
+          target: `:${wantedPort}`,
+          pid: listener.pid,
+          ok: false,
+          message: `Port listener was not killed because it does not look like iVista/WDA: ${listener.raw}`,
+        });
+        continue;
+      }
+      const killed = killPid(listener.pid);
+      stopped.push({
+        targetType: "port",
+        target: `:${wantedPort}`,
+        pid: listener.pid,
+        killed: [killed],
+        ok: killed.ok,
+        message: listener.raw,
+      });
+    }
+  }
   return jsonText({ ok: true, stopped });
+}
+
+export async function toolCleanup(args = {}) {
+  const port = args.port ? Number(args.port) : Number(process.env.IVISTA_WDA_PORT || DEFAULT_WDA_PORT);
+  const before = await portListeners(port);
+  const wdaStop = await toolWdaStop({ ...args, port });
+  const stopPayload = parseToolJson(wdaStop);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const after = await portListeners(port);
+  const remaining = [];
+  const killed = [];
+  for (const listener of after) {
+    const command = `${listener.command} ${await commandForPid(listener.pid)}`;
+    if (!isSafeIvistaProcess(command)) {
+      remaining.push({ ...listener, reason: "not an iVista/WDA process" });
+      continue;
+    }
+    const result = killPid(listener.pid);
+    killed.push({ ...listener, result });
+  }
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  return jsonText({
+    ok: remaining.length === 0,
+    port,
+    before,
+    stopped: stopPayload.stopped || [],
+    killed,
+    remaining: await portListeners(port),
+    skipped: remaining,
+    hints: remaining.length ? ["Use --auto-port or inspect the remaining listener before killing it manually."] : [],
+  });
 }
 
 export async function toolWdaStatus(args = {}) {

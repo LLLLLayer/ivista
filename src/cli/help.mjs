@@ -17,12 +17,14 @@ Usage:
   ivista device list [--connected] [--json]
   ivista device diagnose [--device <device-udid>] [--port 8100]
   ivista wda prepare [--ref ivista-wda-v0.1.3]
+  ivista wda list
   ivista wda start [--port 8100]
   ivista wda start --simulator "iPhone 16" [--port 8100]
   ivista wda start --simulator "iPhone 16" --auto-port
   ivista wda start --device <device-udid> --ios-project MyApp.xcodeproj --scheme MyApp
   ivista wda stop [--port 8100]
   ivista wda status [--port 8100]
+  ivista cleanup [--port 8100]
   ivista observe [--port 8100]
   ivista screen shot [--port 8100] [--output /tmp/ivista.png]
   ivista screen source [--port 8100]
@@ -34,7 +36,7 @@ Usage:
   ivista act home [--port 8100]
   ivista act tap --x 120 --y 500
   ivista act tap --text "Wi-Fi"
-  ivista act tap --contains "语言" [--index 1]
+  ivista act tap --contains "语言" [--index 1] [--scroll]
   ivista act double-tap --x 120 --y 500
   ivista act double-tap --text "照片"
   ivista act two-finger-tap
@@ -68,6 +70,7 @@ Options:
   --ipad                  Show only iPad Simulators.
   --auto-port             Find an available WDA port automatically.
   --connected             Show only connected physical iOS devices.
+  --scroll                Scroll while searching for text actions.
   --simulator <name|udid> Simulator name or UDID.
   --device <name|udid>    Physical iOS device name or UDID.
   --name <name>           Simulator name.

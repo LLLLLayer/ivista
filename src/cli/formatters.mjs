@@ -186,6 +186,27 @@ function printWdaCache(payload) {
   if (payload.config?.repo) console.log(`repo: ${payload.config.repo}`);
 }
 
+function printWdaList(payload) {
+  const sessions = payload.sessions || [];
+  if (sessions.length === 0) {
+    console.log("No saved WDA sessions.");
+    return;
+  }
+  console.log("Saved WDA Sessions");
+  console.log("");
+  for (const item of sessions) {
+    const state = item.reachable ? "reachable" : "offline";
+    const target = item.name || item.target || "unknown";
+    console.log(`${state}  ${item.targetType || "unknown"}  ${target}`);
+    if (item.baseUrl) console.log(`  url: ${item.baseUrl}`);
+    if (item.port) console.log(`  port: ${item.port}`);
+    if (item.pid) console.log(`  pid: ${item.pid}${item.pidAlive ? " alive" : " dead"}`);
+    if (item.proxyPid) console.log(`  proxy pid: ${item.proxyPid}${item.proxyPidAlive ? " alive" : " dead"}`);
+    if (item.logPath) console.log(`  log: ${asPath(item.logPath)}`);
+    if (item.statusError) console.log(`  status error: ${item.statusError}`);
+  }
+}
+
 function printWdaPrepare(payload) {
   if (!payload.ok) {
     console.log(`WDA prepare failed: ${payload.error || "unknown error"}`);
@@ -254,6 +275,31 @@ function printWdaStop(payload) {
     console.log(`${status} ${item.target || item.simulator}${pid}${proxyPid}`);
     if (!item.ok && item.message) console.log(`       ${item.message}`);
   }
+}
+
+function printCleanup(payload) {
+  console.log(payload.ok ? "Cleanup complete." : "Cleanup needs attention.");
+  if (payload.port) console.log(`port: ${payload.port}`);
+  for (const item of payload.stopped || []) {
+    const status = item.ok ? "[OK]" : "[WARN]";
+    const pid = item.pid ? ` pid=${item.pid}` : "";
+    const proxyPid = item.proxyPid ? ` proxyPid=${item.proxyPid}` : "";
+    console.log(`${status} stopped ${item.target || item.simulator || ""}${pid}${proxyPid}`);
+    if (item.message) console.log(`       ${item.message}`);
+  }
+  for (const item of payload.killed || []) {
+    const status = item.result?.ok ? "[OK]" : "[WARN]";
+    console.log(`${status} killed pid=${item.pid} ${item.command || ""}`.trim());
+  }
+  for (const item of payload.skipped || []) {
+    console.log(`[SKIP] pid=${item.pid} ${item.command || ""} ${item.reason || ""}`.trim());
+  }
+  if (payload.remaining?.length) {
+    console.log("");
+    console.log("Remaining listeners:");
+    for (const item of payload.remaining) console.log(`- pid=${item.pid} ${item.raw || item.command || ""}`);
+  }
+  for (const hint of payload.hints || []) console.log(`hint: ${hint}`);
 }
 
 function printWdaStatus(payload) {
@@ -346,6 +392,7 @@ function printGeneric(commandKey, payload) {
   if (["act tap", "act double-tap", "act long-press"].includes(commandKey) && payload.selector) {
     console.log(`${commandKey} ok.`);
     if (payload.method) console.log(`method: ${payload.method}`);
+    if (payload.scrolled) console.log(`scrolled: ${payload.scrolled}`);
     if (payload.match?.summary) console.log(`match: ${payload.match.summary}`);
     if (payload.point) console.log(`point: x=${payload.point.x} y=${payload.point.y}`);
     return;
@@ -368,10 +415,12 @@ function printHuman(commandKey, payload) {
   if (commandKey === "device list") return printDeviceList(payload);
   if (commandKey === "device diagnose") return printDeviceDiagnose(payload);
   if (commandKey === "wda cache status") return printWdaCache(payload);
+  if (commandKey === "wda list") return printWdaList(payload);
   if (commandKey === "wda prepare") return printWdaPrepare(payload);
   if (commandKey === "wda start") return printWdaStart(payload);
   if (commandKey === "wda stop") return printWdaStop(payload);
   if (commandKey === "wda status") return printWdaStatus(payload);
+  if (commandKey === "cleanup") return printCleanup(payload);
   return printGeneric(commandKey, payload);
 }
 

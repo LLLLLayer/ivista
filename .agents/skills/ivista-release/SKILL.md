@@ -10,7 +10,7 @@ This skill releases the iVista project. iVista has two related repositories:
 - Outer CLI/plugin/docs repo: project root, remote `git@github.com:LLLLLayer/ivista.git`.
 - WDA fork: `ivista-wda/`, remote `git@github.com:LLLLLayer/ivista-wda.git`.
 
-The npm package must not include the `ivista-wda/` checkout. The outer package should only include `bin`, `src`, `scripts`, `plugins/ivista`, `docs`, `.agents/plugins/marketplace.json`, package metadata, README files, and LICENSE.
+The npm package must not include the `ivista-wda/` checkout or `docs/private/`. The outer package should only include `bin`, `src`, `scripts`, `plugins/ivista`, public docs, `.agents/plugins/marketplace.json`, package metadata, README files, and LICENSE.
 
 ## Release Order
 
@@ -52,6 +52,7 @@ rg -n "0\\.1\\.|v0\\.1\\.|ivista-wda-v" package.json bin src README.md README.zh
 
 ```bash
 npm run check
+npm test
 npm run check:release
 git diff --check
 npm pack --dry-run

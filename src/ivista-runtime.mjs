@@ -3,6 +3,8 @@ import { toolDeviceDiagnose, toolDeviceList, toolSimulatorBoot, toolSimulatorLis
 import { toolRunCurrent, toolRunExport, toolRunStart } from "./runs.mjs";
 import {
   toolWdaCacheStatus,
+  toolCleanup,
+  toolWdaList,
   toolWdaPrepare,
   toolWdaStartSimulator,
   toolWdaStatus,
@@ -49,6 +51,10 @@ const semanticElementProperties = {
   regex: { type: ["string", "boolean"] },
   index: { type: "number" },
   timeoutMs: { type: "number" },
+  scroll: { type: "boolean" },
+  maxScrolls: { type: "number" },
+  scrollDirection: { type: "string" },
+  pollMs: { type: "number" },
 };
 
 const wdaConnectionProperties = {
@@ -171,6 +177,31 @@ export const tools = {
       },
     },
     handler: toolWdaCacheStatus,
+  },
+  ivista_wda_list: {
+    description: "List saved iVista WDA sessions with ports, pids, logs, and reachability.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        timeoutMs: { type: "number" },
+      },
+    },
+    handler: toolWdaList,
+  },
+  ivista_cleanup: {
+    description: "Safely clean stale iVista/WDA sessions, dead WDA ports, and known iVista forwarding processes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        simulator: { type: "string" },
+        device: { type: "string" },
+        udid: { type: "string" },
+        name: { type: "string" },
+        port: { type: "number" },
+        timeoutMs: { type: "number" },
+      },
+    },
+    handler: toolCleanup,
   },
   ivista_wda_prepare: {
     description: "Download and cache the pinned WebDriverAgent project if missing.",

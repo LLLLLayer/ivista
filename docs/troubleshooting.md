@@ -8,7 +8,7 @@ Start with the local health check:
 ivista doctor
 ```
 
-When using the iVista Agent Plugin, use the `ivista-cleanup` skill for this whole flow.
+When using the iVista Agent Plugin, use the `ivista-cleanup` skill for this whole flow. From the CLI, use `ivista cleanup --port <port>`.
 
 ## WDA Startup
 
@@ -17,7 +17,9 @@ If WDA does not start:
 - Run `ivista wda cache status`.
 - Run `ivista wda prepare` to refresh the pinned WDA checkout.
 - Add `--auto-port` to the normal `ivista wda start --simulator ...` or `ivista wda start --device ...` command if port `8100` is busy.
+- Run `ivista wda list` to inspect saved sessions, ports, pids, and logs.
 - Use `ivista wda stop --port <port>` to clean up a stale runner.
+- Use `ivista cleanup --port <port>` when a stale session or listener is still holding the port.
 - Pass a longer startup timeout for first builds: `--wait 180000`.
 
 If a previous WDA runner crashed on a Simulator, terminate it and start on a fresh port:

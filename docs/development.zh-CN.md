@@ -7,6 +7,7 @@
 ```bash
 npm install
 npm run check
+npm test
 npm run check:release
 npm run doctor
 ```
