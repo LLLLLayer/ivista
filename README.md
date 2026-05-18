@@ -294,8 +294,43 @@ IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista screen shot
 
 This repository includes a skill-only Codex and Claude Code plugin at [plugins/ivista](plugins/ivista). It does not expose MCP tools. It teaches the host agent when and how to install and call the `ivista` CLI.
 
+The plugin installs agent instructions only. Install the CLI separately with:
+
+```bash
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
+ivista doctor
+```
+
+Install for Codex:
+
+```bash
+codex plugin marketplace add LLLLLayer/ivista
+```
+
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v0.1.30`.
+
+For local development from this checkout, use:
+
+```bash
+codex plugin marketplace add .
+```
+
+Install for Claude Code:
+
+```text
+/plugin marketplace add LLLLLayer/ivista
+/plugin install ivista@ivista
+```
+
+For local Claude Code testing from this checkout:
+
+```bash
+claude --plugin-dir ./plugins/ivista
+```
+
 The plugin directory is intentionally thin:
 
+- [.agents/plugins/marketplace.json](.agents/plugins/marketplace.json): Codex marketplace manifest for the repository.
 - [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json): Claude Code marketplace manifest for the repository.
 - [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json): Codex plugin manifest.
 - [plugins/ivista/.claude-plugin/plugin.json](plugins/ivista/.claude-plugin/plugin.json): Claude Code plugin manifest.
@@ -303,19 +338,6 @@ The plugin directory is intentionally thin:
 - [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md): install and environment repair instructions.
 - [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md): device operation instructions.
 - [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md): run report export instructions.
-
-For local Claude Code testing:
-
-```bash
-claude --plugin-dir ./plugins/ivista
-```
-
-For Claude Code marketplace testing from this checkout:
-
-```text
-/plugin marketplace add .
-/plugin install ivista@ivista
-```
 
 Claude Code exposes the skills under the plugin namespace:
 

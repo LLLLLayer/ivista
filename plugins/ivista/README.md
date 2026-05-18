@@ -9,18 +9,33 @@ This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, `.clau
 - Codex reads `.codex-plugin/plugin.json`.
 - Claude Code reads `.claude-plugin/plugin.json` and discovers the shared `skills/` directory.
 - Both hosts use the same `ivista-install`, `ivista-operate`, and `ivista-report` skill content.
+- The plugin installs agent instructions only. Install the `ivista` CLI separately.
+
+Install for Codex:
+
+```bash
+codex plugin marketplace add LLLLLayer/ivista
+```
+
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v0.1.30`.
+
+For local development from this checkout:
+
+```bash
+codex plugin marketplace add .
+```
+
+Install for Claude Code:
+
+```text
+/plugin marketplace add LLLLLayer/ivista
+/plugin install ivista@ivista
+```
 
 For local Claude Code testing from this repository:
 
 ```bash
 claude --plugin-dir ./plugins/ivista
-```
-
-For repository-level Claude Code marketplace testing, use the root `.claude-plugin/marketplace.json`:
-
-```text
-/plugin marketplace add .
-/plugin install ivista@ivista
 ```
 
 The Claude Code skill names are namespaced by the plugin name:

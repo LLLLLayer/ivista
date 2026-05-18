@@ -294,8 +294,43 @@ IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista screen shot
 
 本仓库包含一个 skill-only Codex / Claude Code Plugin，位于 [plugins/ivista](plugins/ivista)。它不暴露 MCP tools，只负责教宿主 Agent 什么时候以及如何安装和调用 `ivista` CLI。
 
+Plugin 只安装 Agent 使用说明。CLI 需要单独安装：
+
+```bash
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
+ivista doctor
+```
+
+安装到 Codex：
+
+```bash
+codex plugin marketplace add LLLLLayer/ivista
+```
+
+然后打开 Codex，在 plugin marketplace 里安装 `iVista`。如果要固定到某个版本，可以加 `--ref v0.1.30`。
+
+如果是从当前 checkout 做本地开发测试：
+
+```bash
+codex plugin marketplace add .
+```
+
+安装到 Claude Code：
+
+```text
+/plugin marketplace add LLLLLayer/ivista
+/plugin install ivista@ivista
+```
+
+从当前 checkout 本地测试 Claude Code：
+
+```bash
+claude --plugin-dir ./plugins/ivista
+```
+
 Plugin 目录保持轻量：
 
+- [.agents/plugins/marketplace.json](.agents/plugins/marketplace.json)：仓库级 Codex marketplace manifest。
 - [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json)：仓库级 Claude Code marketplace manifest。
 - [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json)：Codex plugin manifest。
 - [plugins/ivista/.claude-plugin/plugin.json](plugins/ivista/.claude-plugin/plugin.json)：Claude Code plugin manifest。
@@ -303,19 +338,6 @@ Plugin 目录保持轻量：
 - [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md)：安装和环境修复说明。
 - [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md)：设备操作说明。
 - [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md)：run 报告导出说明。
-
-本地用 Claude Code 测试：
-
-```bash
-claude --plugin-dir ./plugins/ivista
-```
-
-从当前 checkout 测试 Claude Code marketplace：
-
-```text
-/plugin marketplace add .
-/plugin install ivista@ivista
-```
 
 Claude Code 里 skill 会带 plugin 命名空间：
 
