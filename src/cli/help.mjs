@@ -23,10 +23,14 @@ Usage:
   ivista wda start --device <device-udid> --ios-project MyApp.xcodeproj --scheme MyApp
   ivista wda stop [--port 8100]
   ivista wda status [--port 8100]
+  ivista observe [--port 8100]
   ivista screen shot [--port 8100] [--output /tmp/ivista.png]
   ivista screen source [--port 8100]
   ivista screen texts [--port 8100]
   ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
+  ivista wait gone "Loading" [--port 8100] [--timeout 10000]
+  ivista wait idle [--port 8100] [--stable-ms 1000]
+  ivista wait app --bundle-id com.apple.Preferences
   ivista act home [--port 8100]
   ivista act tap --x 120 --y 500
   ivista act tap --text "Wi-Fi"
@@ -82,6 +86,8 @@ Options:
   --regex <pattern>       Match accessibility text with a regular expression.
   --index <n>             Use the nth matched accessibility element. Defaults to 1.
   --duration <seconds>    Gesture duration in seconds.
+  --stable-ms <ms>        Required stable accessibility tree time for wait idle.
+  --poll-ms <ms>          Poll interval for wait commands.
   --scale <number>        Pinch scale. Values under 1 zoom out; over 1 zoom in.
   --velocity <number>     Gesture velocity.
   --rotation <radians>    Rotation gesture amount in radians.

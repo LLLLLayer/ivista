@@ -307,9 +307,39 @@ function printGeneric(commandKey, payload) {
     if (payload.artifact?.path) console.log(`artifact: ${asPath(payload.artifact.path)}`);
     return;
   }
+  if (commandKey === "observe") {
+    console.log("Observation captured.");
+    if (payload.activeApp?.bundleId || payload.activeApp?.bundleID || payload.activeApp?.bundleIdentifier) {
+      console.log(`active app: ${payload.activeApp.bundleId || payload.activeApp.bundleID || payload.activeApp.bundleIdentifier}`);
+    }
+    if (payload.screenshot?.artifact?.path) console.log(`screenshot: ${asPath(payload.screenshot.artifact.path)}`);
+    if (payload.source?.artifact?.path) console.log(`source: ${asPath(payload.source.artifact.path)}`);
+    if (payload.artifacts?.texts?.path) console.log(`texts: ${asPath(payload.artifacts.texts.path)}`);
+    console.log(`texts: ${payload.textCount || 0}`);
+    console.log(`elements: ${payload.elementCount || 0}`);
+    for (const text of (payload.texts || []).slice(0, 12)) console.log(`- ${text}`);
+    return;
+  }
   if (commandKey === "wait text") {
     console.log("Text appeared.");
     if (payload.match?.summary) console.log(payload.match.summary);
+    if (payload.elapsedMs !== undefined) console.log(`elapsed: ${payload.elapsedMs}ms`);
+    return;
+  }
+  if (commandKey === "wait gone") {
+    console.log("Text disappeared.");
+    if (payload.elapsedMs !== undefined) console.log(`elapsed: ${payload.elapsedMs}ms`);
+    return;
+  }
+  if (commandKey === "wait idle") {
+    console.log("Screen is idle.");
+    if (payload.stableMs !== undefined) console.log(`stable: ${payload.stableMs}ms`);
+    if (payload.elapsedMs !== undefined) console.log(`elapsed: ${payload.elapsedMs}ms`);
+    return;
+  }
+  if (commandKey === "wait app") {
+    console.log("App is active.");
+    if (payload.bundleId) console.log(`bundle id: ${payload.bundleId}`);
     if (payload.elapsedMs !== undefined) console.log(`elapsed: ${payload.elapsedMs}ms`);
     return;
   }

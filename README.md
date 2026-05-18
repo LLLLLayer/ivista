@@ -2,24 +2,19 @@
 
 English | [简体中文](README.zh-CN.md)
 
-iVista is a CLI-first control layer for iOS Simulator and real-device testing through WebDriverAgent. It gives humans and coding agents the same shell interface for observing, starting, and operating iOS test surfaces.
+iVista is a CLI-first iOS control layer for humans and coding agents. It uses WebDriverAgent to turn an iOS Simulator or connected iPhone/iPad into an observable, scriptable test surface.
 
-In one sentence: iVista turns an iOS Simulator or connected iPhone into an agent-operable mobile test surface.
+Use it when you want an agent to see the current mobile screen, wait for UI state, tap by accessibility text, type, swipe, launch apps, collect artifacts, and export a report without opening Xcode manually.
 
-## What Works Today
+## Highlights
 
-- Check local Xcode, `simctl`, Git, and iVista cache readiness.
-- List and boot iOS Simulators.
-- List connected physical iOS devices.
-- Download and cache a pinned iVista WebDriverAgent fork automatically.
-- Start, stop, and check WebDriverAgent.
-- Start real-device WDA over USB or a CoreDevice wireless tunnel by reusing signing settings from a host iOS app project.
-- Capture screenshots and accessibility/source trees.
-- Run deterministic WDA actions: coordinate or accessibility-text tap, double tap, two-finger tap, long press, drag, pinch, rotate, type, swipe, Home, keyboard dismiss, alerts, device info, device lock/unlock, hardware button press, app launch, and app termination.
-- Export project/conversation/run reports with screenshots, text snapshots, failures, command history, and zip bundles.
-- Provide a skill-only Codex and Claude Code plugin that teaches agents how to install and call the same `ivista` CLI.
-
-The current implementation supports Simulator workflows plus verified USB and CoreDevice wireless real-device WDA paths. Recipes and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
+- Simulator and real-device workflows through one CLI.
+- Automatic WebDriverAgent download, cache, start, stop, and status checks.
+- One-command observation with screenshot, source, visible texts, active app, and WDA status.
+- Deterministic actions: text/coordinate tap, double tap, two-finger tap, long press, drag, pinch, rotate, input, swipe, Home, alerts, device info, lock/unlock, hardware buttons, app launch, and app termination.
+- Agent-friendly waits: text appears, text disappears, screen idle, and active app.
+- Project/conversation/run artifacts under `~/.ivista`, with Markdown and zip exports.
+- Skill-only plugins for Codex and Claude Code that teach agents how to install and operate the same CLI.
 
 ## Requirements
 
@@ -28,7 +23,7 @@ The current implementation supports Simulator workflows plus verified USB and Co
 - Node.js 18 or newer.
 - Git.
 - At least one installed iOS Simulator runtime.
-- For real devices: a trusted/unlocked iPhone or iPad with Developer Mode enabled. USB forwarding needs `iproxy` from libimobiledevice; wireless forwarding uses the CoreDevice tunnel exposed by Xcode/devicectl.
+- For real devices: an unlocked/trusted iPhone or iPad with Developer Mode enabled. USB forwarding uses `iproxy`; wireless forwarding uses the CoreDevice tunnel exposed by Xcode/devicectl.
 
 If Xcode tools fail, select Xcode explicitly:
 
@@ -36,29 +31,24 @@ If Xcode tools fail, select Xcode explicitly:
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 ```
 
-## Installation
+## Install
 
-Install the latest tagged CLI from this repository:
+Install the current release:
 
 ```bash
 npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
 ivista doctor
 ```
 
-Update an existing global install:
+Update an existing install:
 
 ```bash
 ivista update --ref v0.1.30
 ```
 
-For local development from this checkout:
-
-```bash
-npm install -g .
-ivista version
-```
-
 ## Quick Start
+
+### Simulator
 
 ```bash
 ivista doctor
@@ -66,19 +56,17 @@ ivista run start --project . --conversation smoke-settings
 ivista simulator list
 ivista simulator boot --name "iPhone 17"
 ivista wda start --simulator "iPhone 17" --auto-port --wait 180000
-ivista screen shot
-ivista screen source
+ivista observe
 ```
 
-Once WDA is running, drive the Simulator:
+Drive the Simulator:
 
 ```bash
 ivista act home
-ivista act tap --x 120 --y 500
-ivista act input "hello from ivista"
-ivista act swipe --direction up
-ivista app launch --bundle-id com.apple.Preferences
-ivista app terminate --bundle-id com.apple.Preferences
+ivista act tap --text "Settings"
+ivista wait app --bundle-id com.apple.Preferences
+ivista wait idle
+ivista observe --json
 ```
 
 Stop WDA when you are done:
@@ -87,133 +75,114 @@ Stop WDA when you are done:
 ivista wda stop
 ```
 
-Most commands support `--json` for agent-friendly output:
+### Real Device
+
+Run from your host iOS app project when possible so iVista can infer signing:
 
 ```bash
-ivista simulator list --json
-ivista wda status --json
-ivista screen shot --json
+ivista doctor
+ivista run start --project . --conversation real-device-smoke
+ivista device list --connected
+ivista device diagnose --device <device-udid>
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+ivista observe --port <port>
 ```
 
-Run artifacts are grouped by project, conversation, and run under `~/.ivista/projects/`. If `ivista run start` has not been called, iVista creates a current run automatically from the nearest Git root and environment conversation id when available.
+If signing cannot be inferred, pass the signing inputs explicitly:
+
+```bash
+ivista wda start \
+  --device <device-udid> \
+  --signing-team <TEAMID> \
+  --wda-bundle-id <host.bundle.id>.ivista.wda \
+  --auto-port \
+  --wait 180000
+```
+
+## Observation Strategy
+
+Use `observe` when the agent needs a full checkpoint: screenshot, source XML, visible texts, active app, WDA status, and artifact paths.
+
+```bash
+ivista observe --port <port> --json
+```
+
+Good moments to observe:
+
+- after starting WDA or launching an app;
+- before a navigation step when the current screen is uncertain;
+- after a page transition, alert, or important state change;
+- before retrying a failed semantic action;
+- before exporting a report.
+
+For tight action sequences, prefer targeted waits instead of observing after every command:
+
+```bash
+ivista wait idle --port <port> --timeout 15000
+ivista wait text "About" --port <port> --timeout 10000
+ivista wait gone "Loading" --port <port> --timeout 10000
+ivista wait app --bundle-id com.apple.Preferences --port <port>
+```
+
+When a semantic action cannot find text, iVista returns structured hints and candidate data so the agent can retry with `--contains`, `--regex`, `--index`, or a coordinate fallback.
+
+## Reports And Artifacts
+
+Artifacts are grouped by project, conversation, and run:
 
 ```text
 ~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/
   run.json
   events.ndjson
   artifacts/
-    0001-screenshot.png
-    0002-source.xml
-    0003-texts.json
+    0001-observe-screenshot.png
+    0002-observe-source.xml
+    0003-observe-texts.json
 ~/.ivista/projects/<project-key>/conversations/<conversation-id>/exports/
   ivista-run-<run-id>.md
   ivista-run-<run-id>.zip
 ```
 
-Export a report or archive when the session is done:
+Export a report:
 
 ```bash
 ivista run export --format markdown
 ivista run export --format zip
 ```
 
-The Markdown report includes run metadata, command counts, failures, artifact links, screenshot previews, text snapshots. The zip export includes the run directory plus a generated `run-report.md`.
+The Markdown report includes metadata, command counts, failures, artifact links, screenshot previews, and text snapshots. The zip export includes the run directory plus `run-report.md`.
+
+## Real Devices
+
+iVista can start WDA on a physical iPhone/iPad over USB or a CoreDevice wireless tunnel. Run from the host iOS project when possible so signing can be inferred.
+
+```bash
+ivista device list --connected
+ivista device diagnose --device <device-udid>
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+ivista observe --port <port>
+```
+
+If signing cannot be inferred:
+
+```bash
+ivista wda start \
+  --device <device-udid> \
+  --signing-team <TEAMID> \
+  --wda-bundle-id <host.bundle.id>.ivista.wda \
+  --auto-port \
+  --wait 180000
+```
+
+Wireless devices work when `devicectl` reports the device over the local network and exposes a CoreDevice tunnel address. Use `--usb` to force USB forwarding.
 
 ## CLI Reference
 
-```bash
-ivista version
-ivista update [--ref main]
-ivista doctor [--json]
-ivista run start [--project .] [--conversation <id>] [--run <id>]
-ivista run current [--json]
-ivista run export [--format markdown|zip] [--output report.md]
+The README keeps only the getting-started path. See [docs/cli.md](docs/cli.md) for the full command reference, examples, and common options. A Chinese version is available at [docs/cli.zh-CN.md](docs/cli.zh-CN.md).
 
-ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
-ivista simulator boot
-ivista simulator boot 1
-ivista simulator boot --name "iPhone 17"
-ivista simulator boot --udid <simulator-udid>
-ivista device list [--connected] [--json]
-ivista device diagnose [--device <device-udid>] [--port 8100]
-
-ivista wda cache status
-ivista wda prepare [--ref ivista-wda-v0.1.3]
-ivista wda start [--auto-port]
-ivista wda start --simulator "iPhone 17" [--port 8100]
-ivista wda start --simulator "iPhone 17" --auto-port
-ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
-ivista wda stop [--port 8100]
-ivista wda status [--port 8100]
-
-ivista screen shot [--port 8100] [--output /tmp/ivista.png]
-ivista screen source [--port 8100]
-ivista screen texts [--port 8100]
-ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
-
-ivista act home [--port 8100]
-ivista act tap --x 120 --y 500
-ivista act tap --text "Wi-Fi"
-ivista act tap --contains "Language"
-ivista act double-tap --x 120 --y 500
-ivista act double-tap --text "Photos"
-ivista act two-finger-tap
-ivista act long-press --x 120 --y 500 [--duration 1]
-ivista act long-press --text "App" [--duration 1]
-ivista act drag --from-x 100 --from-y 600 --to-x 300 --to-y 200 [--duration 0.5]
-ivista act pinch --scale 0.5 --velocity -1
-ivista act rotate --rotation 1.57 --velocity 1
-ivista act input "hello"
-ivista act swipe --direction up
-
-ivista keyboard dismiss
-
-ivista alert accept [--name OK]
-ivista alert dismiss [--name Cancel]
-ivista alert text
-ivista alert input "hello"
-ivista alert buttons
-
-ivista device lock
-ivista device unlock
-ivista device locked
-ivista device info
-ivista device battery
-ivista device press --name volumeUp
-
-ivista app launch --bundle-id com.example.app
-ivista app terminate --bundle-id com.example.app
-```
-
-Useful options:
-
-- `--json`: print raw JSON.
-- `--simulator <name|udid>`: target Simulator name or UDID.
-- `--device <name|udid>`: target physical iOS device name or UDID.
-- `--name <name>`: Simulator name.
-- `--udid <udid>`: target UDID.
-- `--bundle-id <id>`: app bundle identifier.
-- `--base-url <url>`: override the WDA base URL.
-- `--port <port>`: WDA port, defaulting to `8100`.
-- `--auto-port`: find an available WDA port automatically.
-- `--project <path>`, `--conversation <id>`, `--run <id>`, and `--title <title>`: set project/conversation/run metadata for artifact logging.
-- `--workspace`, `--ios-project`, `--scheme`, `--signing-team`, and `--wda-bundle-id`: real-device WDA signing inputs.
-- `--network` and `--usb`: force the real-device transport mode. By default iVista uses the CoreDevice tunnel when `devicectl` reports `transportType=localNetwork`.
-- `--output <path>`: save command output, currently used by screenshots.
-- `--text <text>`, `--contains <text>`, `--regex <pattern>`, and `--index <n>`: match Accessibility `name`, `label`, or `value` for semantic actions.
-- `--duration <seconds>`: gesture duration.
-- `--scale <number>` and `--velocity <number>`: pinch parameters.
-- `--rotation <radians>`: rotate gesture amount.
-- `--key-names <names>`: comma-separated keyboard dismissal key names.
-- `--wda-path <path>`: use an explicit local WebDriverAgent project.
-- `--repo <url>` and `--ref <ref>`: override the WDA Git source.
-- `--timeout <ms>` and `--wait <ms>`: tune command and WDA startup timeouts.
-
-## WebDriverAgent Management
+## WebDriverAgent
 
 iVista manages WebDriverAgent automatically. Users should not clone WDA manually for the default path.
-
-`ivista wda start` is stateful: it first checks whether WDA is already reachable on the requested port and reuses it when possible. If the port is occupied by something else, it returns a fix hint instead of waiting on a doomed `xcodebuild`.
 
 Defaults:
 
@@ -223,59 +192,54 @@ Defaults:
 - WDA cache: `~/.ivista/cache/webdriveragent/<ref>/`
 - WDA port: `8100`
 
-The default WDA ref is a pinned tag from the `ivista-wda` fork. CLI versions and WDA versions are independent: the CLI pins a known-good WDA ref, while the WDA fork can evolve on its own `develop` branch and publish new tags.
+The CLI pins a known-good WDA ref. The WDA fork evolves independently and is downloaded into the local cache at runtime.
 
 Override WDA only when needed:
 
 ```bash
 ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
 ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
-```
-
-Use `--wda-path` for offline work, enterprise forks, or debugging WDA itself:
-
-```bash
 ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
 ```
 
-For real devices, run from the host iOS project when possible so iVista can infer signing:
+## Agent Plugins
+
+The plugin is skill-only: it installs agent instructions, not the CLI runtime. Install the CLI separately first.
+
+Codex:
 
 ```bash
-ivista device list --connected
-ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+codex plugin marketplace add LLLLLayer/ivista
 ```
 
-If signing cannot be inferred, pass `--signing-team <TEAMID>` and optionally `--wda-bundle-id <bundle-id>`.
-
-Wireless devices are supported when Xcode/devicectl already sees the device over the local network and exposes a CoreDevice tunnel address. iVista detects `transportType=localNetwork` and talks to WDA through that tunnel directly. Use `--usb` to force USB `iproxy` forwarding.
-
-Use the diagnostic command before debugging a wireless failure:
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a release:
 
 ```bash
-ivista device diagnose --device <device-udid>
-ivista device diagnose --device <device-udid> --port 8211
+codex plugin marketplace add LLLLLayer/ivista --ref v0.1.30
 ```
 
-It checks pairing, Developer Mode, CoreDevice connectivity, the wireless tunnel address, `iproxy` availability for USB fallback, and WDA `/status` when a port is provided.
+Claude Code:
 
-Verified real-device examples:
+```text
+/plugin marketplace add LLLLLayer/ivista
+/plugin install ivista@ivista
+```
+
+Local Claude Code testing:
 
 ```bash
-# USB path
-ivista wda start --device <device-udid> --usb --signing-team <TEAMID> --wda-bundle-id <bundle-id> --auto-port --wait 180000
-
-# Wireless path through the CoreDevice tunnel
-ivista device list --connected --json
-ivista wda start --device <device-udid> --network --signing-team <TEAMID> --wda-bundle-id <bundle-id> --port 8211 --wait 180000
-ivista screen shot --port 8211 --output /tmp/ivista.png
-ivista screen source --port 8211
+claude --plugin-dir ./plugins/ivista
 ```
 
-When WDA is started through the CoreDevice tunnel, follow-up commands can still use the logical `--port`; iVista resolves it to the saved tunnel URL internally.
+Claude Code skill names:
+
+```text
+/ivista:ivista-install
+/ivista:ivista-operate
+/ivista:ivista-report
+```
 
 ## Configuration
-
-iVista reads these environment variables:
 
 - `IVISTA_HOME`: overrides the iVista cache/session/log directory.
 - `IVISTA_WDA_REPO`: overrides the WebDriverAgent Git repository.
@@ -287,161 +251,56 @@ Example:
 
 ```bash
 IVISTA_WDA_PORT=8200 ivista wda start --simulator "iPhone 17"
-IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista screen shot
+IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista observe
 ```
 
-## Agent Plugin
+## Troubleshooting
 
-This repository includes a skill-only Codex and Claude Code plugin at [plugins/ivista](plugins/ivista). It does not expose MCP tools. It teaches the host agent when and how to install and call the `ivista` CLI.
-
-The plugin installs agent instructions only. Install the CLI separately with:
-
-```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
-ivista doctor
-```
-
-Install for Codex:
-
-```bash
-codex plugin marketplace add LLLLLayer/ivista
-```
-
-Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v0.1.30`.
-
-For local development from this checkout, use:
-
-```bash
-codex plugin marketplace add .
-```
-
-Install for Claude Code:
-
-```text
-/plugin marketplace add LLLLLayer/ivista
-/plugin install ivista@ivista
-```
-
-For local Claude Code testing from this checkout:
-
-```bash
-claude --plugin-dir ./plugins/ivista
-```
-
-The plugin directory is intentionally thin:
-
-- [.agents/plugins/marketplace.json](.agents/plugins/marketplace.json): Codex marketplace manifest for the repository.
-- [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json): Claude Code marketplace manifest for the repository.
-- [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json): Codex plugin manifest.
-- [plugins/ivista/.claude-plugin/plugin.json](plugins/ivista/.claude-plugin/plugin.json): Claude Code plugin manifest.
-- [plugins/ivista/README.md](plugins/ivista/README.md): plugin-specific usage notes.
-- [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md): install and environment repair instructions.
-- [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md): device operation instructions.
-- [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md): run report export instructions.
-
-Claude Code exposes the skills under the plugin namespace:
-
-```text
-/ivista:ivista-install
-/ivista:ivista-operate
-/ivista:ivista-report
-```
-
-The CLI implementation lives outside the plugin bundle:
-
-- [bin/ivista.mjs](bin/ivista.mjs): CLI entrypoint.
-- [src/ivista-runtime.mjs](src/ivista-runtime.mjs): tool registry and runtime dispatcher.
-- [src/core.mjs](src/core.mjs), [src/devices.mjs](src/devices.mjs), [src/wda.mjs](src/wda.mjs), [src/actions.mjs](src/actions.mjs), [src/sessions.mjs](src/sessions.mjs), and [src/doctor.mjs](src/doctor.mjs): focused runtime modules.
+- Run `ivista doctor` first.
+- Use `ivista wda start --auto-port` if port `8100` is busy.
+- Use `ivista wda stop --port <port>` to clean a stale runner.
+- Use `ivista observe --json` instead of separate screenshot/source/text commands when working with an agent.
+- Use `ivista device diagnose --device <udid>` before debugging real-device or wireless failures.
+- If Xcode cannot build to a real device, unlock the device, trust this Mac, enable Developer Mode, and confirm the selected Xcode supports the iOS version.
 
 ## Development
-
-Install and run checks:
 
 ```bash
 npm install
 npm run check
+npm run check:release
 npm run doctor
 ```
 
-Run the CLI directly from the repo:
+Run from the checkout:
 
 ```bash
 node bin/ivista.mjs version
 node bin/ivista.mjs simulator list
 ```
 
-For local WDA development, keep the WDA fork next to the CLI source:
+Keep the WDA fork as a separate ignored checkout:
 
 ```text
 ivista/
-  ivista-wda/  # ignored by the outer iVista repo
+  ivista-wda/  # separate git repo, ignored by this repo
 ```
 
-`ivista-wda/` is a separate Git checkout of `git@github.com:LLLLLayer/ivista-wda.git`. It is ignored by this repository and should be developed, branched, tagged, and pushed as its own repo.
+## Scope
 
-## Project Layout
+- Simulator is the fastest and most reliable path for local agent validation.
+- Real-device USB and CoreDevice wireless paths work, but signing, trust, Developer Mode, and Xcode/iOS compatibility can still require local setup.
+- iVista performs deterministic WDA actions. It does not include a built-in visual planner.
+- Recipes, app debug hooks, and device-farm style execution are future work.
 
-```text
-.
-├── bin/
-│   └── ivista.mjs
-├── src/
-│   ├── actions.mjs
-│   ├── core.mjs
-│   ├── devices.mjs
-│   ├── doctor.mjs
-│   ├── ivista-runtime.mjs
-│   ├── sessions.mjs
-│   └── wda.mjs
-├── docs/
-│   └── iVista-planning.md
-├── .claude-plugin/
-│   └── marketplace.json
-├── plugins/
-│   └── ivista/
-│       ├── .claude-plugin/
-│       │   └── plugin.json
-│       ├── .codex-plugin/
-│       │   └── plugin.json
-│       ├── README.md
-│       └── skills/
-│           ├── ivista-install/
-│           │   └── SKILL.md
-│           ├── ivista-operate/
-│           │   └── SKILL.md
-│           └── ivista-report/
-│               └── SKILL.md
-├── .agents/
-│   └── plugins/
-│       └── marketplace.json
-├── package.json
-├── LICENSE
-├── README.md
-└── README.zh-CN.md
-```
-
-## Current Scope And Limitations
-
-- Simulator support is the primary working path.
-- Real-device support works for local USB and CoreDevice wireless WDA paths, but is not yet a full one-command bootstrap flow for every signing, trust, and device state.
-- iVista performs deterministic WDA actions; it does not include a built-in vision planner.
-- Recipes, app debug hooks, Midscene adapters, and device-farm style execution are planned but not part of the current CLI surface.
-- Simulator validation is fast and useful, but it is not a complete substitute for real-device testing.
-
-## License
+## License And Open Source Usage
 
 iVista is released under the [MIT License](LICENSE).
 
-## Open Source Software Usage
-
-iVista itself is licensed under MIT. The CLI does not vendor WebDriverAgent into this repository's npm package, Codex plugin bundle, or Claude Code plugin bundle.
-
-By default, iVista downloads a pinned WDA fork at runtime:
+The CLI does not vendor WebDriverAgent into this repository's npm package, Codex plugin bundle, or Claude Code plugin bundle. By default, iVista downloads a pinned WDA fork at runtime:
 
 - WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
 - WDA ref: `ivista-wda-v0.1.3`
 - Cache path: `~/.ivista/cache/webdriveragent/<ref>/`
 
-The WDA fork is an independent open-source project with its own license and third-party notices. If you distribute a customized WDA source tree or binary, keep the license and vendor notices from the WDA repository.
-
-iVista also calls local tools such as Xcode, `xcodebuild`, `xcrun simctl`, Git, Node.js, and npm. These tools are not distributed with iVista and remain governed by their own licenses.
+The WDA fork is an independent open-source project with its own license and third-party notices. iVista also calls local tools such as Xcode, `xcodebuild`, `xcrun simctl`, Git, Node.js, and npm; those tools are not distributed with iVista and remain governed by their own licenses.

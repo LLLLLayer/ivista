@@ -82,6 +82,7 @@ export function parseWdaSource(xml) {
     const width = numericAttr(attrs, "width");
     const height = numericAttr(attrs, "height");
     elements.push({
+      sourceIndex: elements.length + 1,
       type: attrs.type || match[1],
       name: attrs.name || "",
       label: attrs.label || "",
@@ -201,11 +202,63 @@ export function findSourceMatches(xml, selector) {
     });
 }
 
+function bestText(element) {
+  return element.texts[0] || null;
+}
+
+function commonPrefixLength(left, right) {
+  const a = normalizeText(left);
+  const b = normalizeText(right);
+  let index = 0;
+  while (index < a.length && index < b.length && a[index] === b[index]) index += 1;
+  return index;
+}
+
+function textDistanceScore(value, needle) {
+  const text = normalizeText(value);
+  const query = normalizeText(needle);
+  if (!text || !query) return 0;
+  if (text === query) return 100;
+  if (text.includes(query)) return 85;
+  if (query.includes(text)) return 70;
+  const prefix = commonPrefixLength(text, query);
+  const prefixScore = Math.min(45, prefix * 8);
+  const words = query.split(" ").filter(Boolean);
+  const wordScore = words.length
+    ? words.filter((word) => text.includes(word)).length / words.length * 35
+    : 0;
+  return Math.round((prefixScore + wordScore) * 100) / 100;
+}
+
+export function findTextSuggestions(xml, selector, limit = 8) {
+  return parseWdaSource(xml)
+    .filter((element) => element.texts.length > 0)
+    .filter(isUsableElement)
+    .map((element) => {
+      const rankedTexts = element.texts
+        .map((item) => ({ ...item, similarity: textDistanceScore(item.value, selector.text) }))
+        .sort((left, right) => right.similarity - left.similarity);
+      const matchedText = rankedTexts[0] || bestText(element);
+      return {
+        ...element,
+        matchedText,
+        matchedTexts: rankedTexts,
+        center: element.rect ? centerOf(element.rect) : null,
+        score: Math.round((rankedTexts[0]?.similarity || 0) + matchScore(element, matchedText, { ...selector, mode: "contains" }) / 10),
+      };
+    })
+    .filter((element) => element.matchedText)
+    .filter((element) => element.matchedText.similarity > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit);
+}
+
 export async function readSourceMatches(args = {}, selector = resolveTextSelector(args)) {
-  const response = await callWda(args, "GET", ["/source", "/session/:sessionId/source"]);
+  const response = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
   const xml = response.data?.value || response.data;
   if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
-  return { xml, matches: findSourceMatches(xml, selector) };
+  const matches = findSourceMatches(xml, selector);
+  return { xml, matches, suggestions: matches.length > 0 ? [] : findTextSuggestions(xml, selector) };
 }
 
 export async function findWdaElementIds(args = {}, selector = resolveTextSelector(args)) {
@@ -235,10 +288,12 @@ export function candidateSummary(candidate, index) {
   const value = candidate.matchedText?.value || candidate.name || candidate.label || candidate.value || "";
   return {
     index: index + 1,
+    sourceIndex: candidate.sourceIndex,
     type: candidate.type,
     field,
     text: value,
     score: candidate.score,
+    similarity: candidate.matchedText?.similarity,
     rect: candidate.rect,
     center: candidate.center,
     summary: `${index + 1}. ${candidate.type} ${field}="${value}" score=${candidate.score ?? "n/a"} ${rect}`,
@@ -253,6 +308,7 @@ export function elementNotFoundPayload(selector, candidates = []) {
     candidates: candidates.map(candidateSummary),
     hints: [
       "Use --contains for partial text.",
+      "Pass --index <n> when the printed candidates show the intended element.",
       "Run `ivista screen texts` to inspect visible accessibility labels.",
       "Use coordinate tap as a fallback when the app has no useful accessibility labels.",
     ],
@@ -269,17 +325,25 @@ export async function waitForText(args = {}) {
   const selector = resolveTextSelector(args);
   const startedAt = Date.now();
   const timeoutMs = Number(args.timeoutMs || DEFAULT_WAIT_MS);
+  let suggestions = [];
+  let lastError = null;
   while (Date.now() - startedAt <= timeoutMs) {
     const remaining = Math.max(1000, timeoutMs - (Date.now() - startedAt));
-    const { matches } = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, 5000) }, selector);
-    if (matches.length > 0) {
-      return jsonText({
-        ok: true,
-        selector,
-        elapsedMs: Date.now() - startedAt,
-        match: candidateSummary(matches[0], 0),
-        matches: matches.slice(0, 20).map(candidateSummary),
-      });
+    try {
+      const result = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, 10000) }, selector);
+      const { matches } = result;
+      suggestions = result.suggestions || suggestions;
+      if (matches.length > 0) {
+        return jsonText({
+          ok: true,
+          selector,
+          elapsedMs: Date.now() - startedAt,
+          match: candidateSummary(matches[0], 0),
+          matches: matches.slice(0, 20).map(candidateSummary),
+        });
+      }
+    } catch (error) {
+      lastError = error.message;
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
   }
@@ -288,21 +352,116 @@ export async function waitForText(args = {}) {
     selector,
     elapsedMs: Date.now() - startedAt,
     error: `Timed out waiting for ${selectorSummary(selector)} after ${timeoutMs}ms.`,
+    lastError,
+    candidates: suggestions.slice(0, 8).map(candidateSummary),
     hints: ["Check the current screen with `ivista screen texts`.", "Increase --timeout if the app is still loading."],
   });
 }
 
-export async function screenTexts(args = {}) {
-  const response = await callWda(args, "GET", ["/source", "/session/:sessionId/source"]);
-  const xml = response.data?.value || response.data;
-  if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
+export async function waitForGone(args = {}) {
+  const selector = resolveTextSelector(args);
+  const startedAt = Date.now();
+  const timeoutMs = Number(args.timeoutMs || DEFAULT_WAIT_MS);
+  let lastMatches = [];
+  let lastError = null;
+  while (Date.now() - startedAt <= timeoutMs) {
+    const remaining = Math.max(1000, timeoutMs - (Date.now() - startedAt));
+    try {
+      const { matches } = await readSourceMatches({ ...args, timeoutMs: Math.min(remaining, 10000) }, selector);
+      lastMatches = matches;
+      lastError = null;
+      if (matches.length === 0) {
+        return jsonText({
+          ok: true,
+          selector,
+          elapsedMs: Date.now() - startedAt,
+        });
+      }
+    } catch (error) {
+      lastError = error.message;
+    }
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+  }
+  return jsonText({
+    ok: false,
+    selector,
+    elapsedMs: Date.now() - startedAt,
+    matches: lastMatches.slice(0, 20).map(candidateSummary),
+    error: `Timed out waiting for ${selectorSummary(selector)} to disappear after ${timeoutMs}ms.`,
+    lastError,
+    hints: ["The element is still visible or accessible.", "Check the current screen with `ivista observe`."],
+  });
+}
+
+function stableSourceFingerprint(xml) {
+  return parseWdaSource(xml)
+    .filter(isUsableElement)
+    .map((element) => {
+      const text = element.texts.map((item) => `${item.field}:${item.value}`).join("|");
+      const rect = element.rect ? `${element.rect.x},${element.rect.y},${element.rect.width},${element.rect.height}` : "";
+      return `${element.type}:${text}:${rect}`;
+    })
+    .join("\n");
+}
+
+export async function waitForIdle(args = {}) {
+  const startedAt = Date.now();
+  const timeoutMs = Number(args.timeoutMs || DEFAULT_WAIT_MS);
+  const stableMs = Number(args.stableMs || 1000);
+  const pollMs = Number(args.pollMs || POLL_MS);
+  let previous = null;
+  let stableSince = 0;
+  let samples = 0;
+  let lastError = null;
+  while (Date.now() - startedAt <= timeoutMs) {
+    const remaining = Math.max(1000, timeoutMs - (Date.now() - startedAt));
+    try {
+      const response = await callWda({ ...args, timeoutMs: Math.min(remaining, 10000) }, "GET", ["/session/:sessionId/source", "/source"]);
+      const xml = response.data?.value || response.data;
+      if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
+      const fingerprint = stableSourceFingerprint(xml);
+      samples += 1;
+      lastError = null;
+      if (fingerprint === previous) {
+        if (!stableSince) stableSince = Date.now();
+        if (Date.now() - stableSince >= stableMs) {
+          return jsonText({
+            ok: true,
+            elapsedMs: Date.now() - startedAt,
+            stableMs,
+            samples,
+          });
+        }
+      } else {
+        previous = fingerprint;
+        stableSince = 0;
+      }
+    } catch (error) {
+      lastError = error.message;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+  return jsonText({
+    ok: false,
+    elapsedMs: Date.now() - startedAt,
+    stableMs,
+    samples,
+    error: `Timed out waiting for the accessibility tree to stay stable for ${stableMs}ms after ${timeoutMs}ms.`,
+    lastError,
+    hints: ["Increase --timeout or --stable-ms if the app is intentionally animating.", "Use `ivista observe` to capture the current screen state."],
+  });
+}
+
+export function screenTextsFromXml(xml) {
   const elements = parseWdaSource(xml)
     .filter((element) => element.texts.length > 0)
     .filter(isUsableElement)
     .map((element, index) => ({
       index: index + 1,
+      sourceIndex: element.sourceIndex,
       type: element.type,
       texts: element.texts,
+      primaryText: element.texts[0]?.value || "",
       rect: element.rect,
       center: element.rect ? centerOf(element.rect) : null,
     }));
@@ -315,5 +474,12 @@ export async function screenTexts(args = {}) {
       texts.push(item.value);
     }
   }
-  return jsonText({ ok: true, texts, elements });
+  return { ok: true, texts, elements };
+}
+
+export async function screenTexts(args = {}) {
+  const response = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
+  const xml = response.data?.value || response.data;
+  if (typeof xml !== "string") throw new Error("WDA source response did not contain XML text.");
+  return jsonText(screenTextsFromXml(xml));
 }

@@ -11,7 +11,9 @@
     "src",
     "scripts",
     "plugins/ivista",
-    "docs",
+    "docs/README.md",
+    "docs/cli.md",
+    "docs/cli.zh-CN.md",
     ".agents/plugins/marketplace.json",
     ".claude-plugin/marketplace.json"
   ],

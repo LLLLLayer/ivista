@@ -14,6 +14,9 @@ import {
   readSourceMatches,
   resolveTextSelector,
   screenTexts,
+  screenTextsFromXml,
+  waitForGone,
+  waitForIdle,
   waitForText,
 } from "./accessibility.mjs";
 
@@ -33,7 +36,7 @@ export async function toolScreenshot(args = {}) {
 }
 
 export async function toolSource(args = {}) {
-  const response = await callWda(args, "GET", ["/source", "/session/:sessionId/source"]);
+  const response = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
   const value = response.data?.value || response.data;
   const artifact = typeof value === "string" ? saveRunArtifact(args, "source", "xml", value) : null;
   return jsonText({ ok: true, artifact, response: response.data });
@@ -44,6 +47,59 @@ export async function toolScreenTexts(args = {}) {
   const payload = JSON.parse(result.content[0].text);
   const artifact = saveRunArtifact(args, "texts", "json", `${JSON.stringify(payload, null, 2)}\n`);
   return jsonText({ ...payload, artifact });
+}
+
+async function readActiveAppInfo(args = {}) {
+  try {
+    const response = await callWda(args, "GET", ["/session/:sessionId/wda/activeAppInfo", "/wda/activeAppInfo"]);
+    return { ok: true, response: response.data, value: response.data?.value || response.data };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
+function summarizeTexts(payload, limit = 30) {
+  return (payload.texts || []).slice(0, limit);
+}
+
+export async function toolObserve(args = {}) {
+  const artifacts = {};
+  const status = await callWda(args, "GET", ["/status", "/session/:sessionId/status"]).catch((error) => ({ error }));
+  const screenshotResponse = await callWda(args, "GET", ["/screenshot", "/session/:sessionId/screenshot"]);
+  const screenshotValue = screenshotResponse.data?.value || screenshotResponse.data;
+  if (typeof screenshotValue !== "string") throw new Error("WDA screenshot response did not contain base64 image data.");
+  artifacts.screenshot = saveRunArtifact(args, "observe-screenshot", "png", Buffer.from(screenshotValue, "base64"));
+
+  const sourceResponse = await callWda(args, "GET", ["/session/:sessionId/source", "/source"]);
+  const sourceValue = sourceResponse.data?.value || sourceResponse.data;
+  if (typeof sourceValue !== "string") throw new Error("WDA source response did not contain XML text.");
+  artifacts.source = saveRunArtifact(args, "observe-source", "xml", sourceValue);
+
+  const textsPayload = screenTextsFromXml(sourceValue);
+  artifacts.texts = saveRunArtifact(args, "observe-texts", "json", `${JSON.stringify(textsPayload, null, 2)}\n`);
+
+  const activeApp = await readActiveAppInfo(args);
+  return jsonText({
+    ok: true,
+    baseUrl: args.baseUrl || null,
+    port: args.port || null,
+    artifacts,
+    screenshot: {
+      artifact: artifacts.screenshot,
+      base64Bytes: screenshotValue.length,
+    },
+    source: {
+      artifact: artifacts.source,
+      chars: sourceValue.length,
+    },
+    texts: summarizeTexts(textsPayload),
+    textCount: textsPayload.texts?.length || 0,
+    elementCount: textsPayload.elements?.length || 0,
+    elements: (textsPayload.elements || []).slice(0, 40),
+    activeApp: activeApp.ok ? activeApp.value : null,
+    activeAppError: activeApp.ok ? null : activeApp.error,
+    status: status.error ? { ok: false, error: status.error.message } : { ok: true, response: status.data },
+  });
 }
 
 export async function toolTap(args = {}) {
@@ -74,24 +130,25 @@ async function coordinateLongPress(args, point) {
 
 async function sourcePointForText(args, selector) {
   const selectedIndex = indexFromArgs(args);
-  const { matches } = await readSourceMatches(args, selector);
+  const { matches, suggestions } = await readSourceMatches(args, selector);
   const candidate = matches[selectedIndex - 1];
-  if (!candidate) return { ok: false, matches };
+  if (!candidate) return { ok: false, matches, suggestions };
   if (!candidate.center) {
     return {
       ok: false,
       matches,
+      suggestions,
       error: `Matched ${selector.mode} "${selector.text}", but the element has no usable rect.`,
     };
   }
-  return { ok: true, candidate, matches, point: candidate.center };
+  return { ok: true, candidate, matches, suggestions, point: candidate.center };
 }
 
 async function textCoordinateGesture(args, gestureName, invoke) {
   const selector = resolveTextSelector(args);
   const target = await sourcePointForText(args, selector);
   if (!target.ok) {
-    const payload = JSON.parse(elementNotFoundPayload(selector, target.matches || []).content[0].text);
+    const payload = JSON.parse(elementNotFoundPayload(selector, (target.matches?.length ? target.matches : target.suggestions) || []).content[0].text);
     if (target.error) payload.error = target.error;
     return jsonText(payload);
   }
@@ -153,7 +210,7 @@ export async function toolTapText(args = {}) {
     }
   }
   if (!target.ok) {
-    const payload = JSON.parse(elementNotFoundPayload(selector, target.matches || []).content[0].text);
+    const payload = JSON.parse(elementNotFoundPayload(selector, (target.matches?.length ? target.matches : target.suggestions) || []).content[0].text);
     if (elementLookupError) payload.elementLookupError = elementLookupError;
     return jsonText(payload);
   }
@@ -235,6 +292,47 @@ export async function toolLongPress(args = {}) {
 
 export async function toolWaitText(args = {}) {
   return await waitForText(args);
+}
+
+export async function toolWaitGone(args = {}) {
+  return await waitForGone(args);
+}
+
+export async function toolWaitIdle(args = {}) {
+  return await waitForIdle(args);
+}
+
+export async function toolWaitApp(args = {}) {
+  const bundleId = args.bundleId || args.text;
+  if (!bundleId) throw new Error("Provide --bundle-id <id>.");
+  const startedAt = Date.now();
+  const timeoutMs = Number(args.timeoutMs || 10000);
+  let last = null;
+  while (Date.now() - startedAt <= timeoutMs) {
+    const remaining = Math.max(500, timeoutMs - (Date.now() - startedAt));
+    const activeApp = await readActiveAppInfo({ ...args, timeoutMs: Math.min(remaining, 3000) });
+    last = activeApp;
+    const value = activeApp.value || {};
+    const activeBundleId = value.bundleId || value.bundleID || value.bundleIdentifier;
+    if (activeApp.ok && activeBundleId === bundleId) {
+      return jsonText({
+        ok: true,
+        bundleId,
+        elapsedMs: Date.now() - startedAt,
+        activeApp: value,
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return jsonText({
+    ok: false,
+    bundleId,
+    elapsedMs: Date.now() - startedAt,
+    activeApp: last?.value || null,
+    activeAppError: last?.ok ? null : last?.error,
+    error: `Timed out waiting for active app ${bundleId} after ${timeoutMs}ms.`,
+    hints: ["Launch the app with `ivista app launch --bundle-id <id>`.", "Use `ivista observe --json` to inspect activeApp."],
+  });
 }
 
 export async function toolDrag(args = {}) {

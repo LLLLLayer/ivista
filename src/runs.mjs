@@ -218,7 +218,7 @@ export function saveRunArtifact(args = {}, kind, extension, data) {
 export function summarizeResult(payload) {
   if (!payload || typeof payload !== "object") return payload;
   const summary = { ok: payload.ok };
-  for (const key of ["output", "artifact", "artifacts", "selector", "method", "point", "match", "error", "hints", "baseUrl", "port"]) {
+  for (const key of ["output", "artifact", "artifacts", "selector", "method", "point", "match", "error", "hints", "baseUrl", "port", "textCount", "elementCount", "activeApp"]) {
     if (payload[key] !== undefined) summary[key] = payload[key];
   }
   if (typeof payload.response?.value === "string") {

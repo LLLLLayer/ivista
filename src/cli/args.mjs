@@ -33,6 +33,8 @@ const aliases = {
   "to-x": "toX",
   "to-y": "toY",
   "key-names": "keyNames",
+  "stable-ms": "stableMs",
+  "poll-ms": "pollMs",
 };
 
 const numericOptions = [
@@ -53,6 +55,8 @@ const numericOptions = [
   "velocity",
   "rotation",
   "index",
+  "stableMs",
+  "pollMs",
 ];
 
 export function parseArgs(argv) {
@@ -105,6 +109,12 @@ export function normalizeOptions(options, positionals) {
   }
   if (positionals[0] === "wait" && positionals[1] === "text" && typeof out.text !== "string" && typeof out.contains !== "string" && typeof out.regex !== "string") {
     out.text = positionals.slice(2).join(" ");
+  }
+  if (positionals[0] === "wait" && positionals[1] === "gone" && typeof out.text !== "string" && typeof out.contains !== "string" && typeof out.regex !== "string") {
+    out.text = positionals.slice(2).join(" ");
+  }
+  if (positionals[0] === "wait" && positionals[1] === "app" && typeof out.bundleId !== "string") {
+    out.bundleId = positionals.slice(2).join(" ");
   }
   if (positionals[0] === "act" && ["tap", "double-tap", "long-press"].includes(positionals[1]) && typeof out.text !== "string" && typeof out.contains !== "string" && typeof out.regex !== "string") {
     const text = positionals.slice(2).join(" ");

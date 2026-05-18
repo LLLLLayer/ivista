@@ -2,24 +2,19 @@
 
 [English](README.md) | 简体中文
 
-iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 WebDriverAgent 提供观察、启动和操作能力。它的目标是让人类开发者和 Coding Agent 使用同一套命令行接口来控制移动端测试表面。
+iVista 是一个 CLI-first 的 iOS 控制层，面向人类开发者和 Coding Agent。它基于 WebDriverAgent，把 iOS Simulator 或连接的 iPhone/iPad 变成可观察、可脚本化的测试表面。
 
-一句话：iVista 把 iOS Simulator 或连接的 iPhone 变成 Agent 可以稳定观察和操作的移动测试表面。
+当你希望 Agent 看见当前手机屏幕、等待 UI 状态、按 accessibility 文本点击、输入、滑动、启动 App、收集现场素材并导出报告时，可以使用 iVista，而不是手动打开 Xcode 跑 WDA。
 
-## 当前可用能力
+## 亮点
 
-- 检查本机 Xcode、`simctl`、Git 和 iVista 缓存状态。
-- 列出和启动 iOS Simulator。
-- 列出已连接的物理 iOS 设备。
-- 自动下载并缓存固定版本的 iVista WebDriverAgent fork。
-- 启动、停止和检查 WebDriverAgent。
-- 通过宿主 iOS App 项目复用签名信息，使用 USB 或 CoreDevice 无线 tunnel 启动真机 WDA。
-- 获取截图和 accessibility/source 树。
-- 执行确定性的 WDA 动作：坐标或 accessibility 文本点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、收起键盘、处理弹窗、读取设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
-- 按项目、对话和 run 导出报告，包含截图、文本快照、失败命令、命令历史和 zip 调试包。
-- 提供 skill-only Codex / Claude Code Plugin，让 Agent 学会安装并调用同一个 `ivista` CLI。
-
-当前实现支持 Simulator 工作流，也已经验证 USB 和 CoreDevice 无线真机 WDA 路径。Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
+- Simulator 和真机使用同一套 CLI。
+- 自动下载、缓存、启动、停止和检查 WebDriverAgent。
+- `ivista observe` 一次性获取截图、source、可见文本、当前 App 和 WDA 状态。
+- 确定性操作：文本/坐标点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、弹窗、设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
+- Agent 友好的等待：文本出现、文本消失、屏幕稳定、指定 App 激活。
+- 按项目/对话/run 归档素材到 `~/.ivista`，并支持 Markdown 和 zip 导出。
+- 提供 skill-only Codex / Claude Code plugin，让 Agent 学会安装和操作同一个 `ivista` CLI。
 
 ## 环境要求
 
@@ -28,7 +23,7 @@ iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 W
 - Node.js 18 或更高版本。
 - Git。
 - 至少安装一个 iOS Simulator runtime。
-- 真机场景需要已信任/已解锁且开启 Developer Mode 的 iPhone 或 iPad。USB 转发需要 libimobiledevice 提供的 `iproxy`；无线转发使用 Xcode/devicectl 暴露的 CoreDevice tunnel。
+- 真机场景需要已解锁/已信任且开启 Developer Mode 的 iPhone 或 iPad。USB 转发使用 `iproxy`；无线转发使用 Xcode/devicectl 暴露的 CoreDevice tunnel。
 
 如果 Xcode 工具不可用，可以显式选择 Xcode：
 
@@ -38,27 +33,22 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 ## 安装
 
-从仓库安装最新 tag：
+安装当前版本：
 
 ```bash
 npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
 ivista doctor
 ```
 
-更新已有的全局安装：
+更新已有安装：
 
 ```bash
 ivista update --ref v0.1.30
 ```
 
-本地开发安装：
-
-```bash
-npm install -g .
-ivista version
-```
-
 ## 快速开始
+
+### Simulator
 
 ```bash
 ivista doctor
@@ -66,19 +56,17 @@ ivista run start --project . --conversation smoke-settings
 ivista simulator list
 ivista simulator boot --name "iPhone 17"
 ivista wda start --simulator "iPhone 17" --auto-port --wait 180000
-ivista screen shot
-ivista screen source
+ivista observe
 ```
 
-WDA 启动后，可以操作模拟器：
+操作 Simulator：
 
 ```bash
 ivista act home
-ivista act tap --x 120 --y 500
-ivista act input "hello from ivista"
-ivista act swipe --direction up
-ivista app launch --bundle-id com.apple.Preferences
-ivista app terminate --bundle-id com.apple.Preferences
+ivista act tap --text "设置"
+ivista wait app --bundle-id com.apple.Preferences
+ivista wait idle
+ivista observe --json
 ```
 
 用完后停止 WDA：
@@ -87,133 +75,114 @@ ivista app terminate --bundle-id com.apple.Preferences
 ivista wda stop
 ```
 
-大多数命令支持 `--json`，方便 Agent 读取结构化输出：
+### 真机
+
+尽量在宿主 iOS App 项目目录下运行，这样 iVista 可以推断签名配置：
 
 ```bash
-ivista simulator list --json
-ivista wda status --json
-ivista screen shot --json
+ivista doctor
+ivista run start --project . --conversation real-device-smoke
+ivista device list --connected
+ivista device diagnose --device <device-udid>
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+ivista observe --port <port>
 ```
 
-运行素材会按照项目、对话和 run 归档到 `~/.ivista/projects/`。如果还没有执行 `ivista run start`，iVista 会从最近的 Git root 和可用的环境变量对话 id 自动创建当前 run。
+如果签名无法自动推断，显式传入签名参数：
+
+```bash
+ivista wda start \
+  --device <device-udid> \
+  --signing-team <TEAMID> \
+  --wda-bundle-id <host.bundle.id>.ivista.wda \
+  --auto-port \
+  --wait 180000
+```
+
+## 观察策略
+
+当 Agent 需要完整 checkpoint 时使用 `observe`：截图、source XML、可见文本、当前 App、WDA 状态和 artifact 路径会一次性返回。
+
+```bash
+ivista observe --port <port> --json
+```
+
+适合 observe 的时机：
+
+- WDA 启动后或 App 启动后；
+- 当前页面不确定、准备导航前；
+- 页面跳转、弹窗处理或关键状态变化后；
+- 语义操作失败、准备重试前；
+- 导出报告前。
+
+连续小动作中间优先用更轻量的等待，不必每一步都 observe：
+
+```bash
+ivista wait idle --port <port> --timeout 15000
+ivista wait text "关于本机" --port <port> --timeout 10000
+ivista wait gone "Loading" --port <port> --timeout 10000
+ivista wait app --bundle-id com.apple.Preferences --port <port>
+```
+
+语义操作找不到文本时，iVista 会返回结构化 hints 和候选信息，方便 Agent 用 `--contains`、`--regex`、`--index` 或坐标 fallback 重试。
+
+## 报告和素材
+
+素材按项目、对话和 run 归档：
 
 ```text
 ~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/
   run.json
   events.ndjson
   artifacts/
-    0001-screenshot.png
-    0002-source.xml
-    0003-texts.json
+    0001-observe-screenshot.png
+    0002-observe-source.xml
+    0003-observe-texts.json
 ~/.ivista/projects/<project-key>/conversations/<conversation-id>/exports/
   ivista-run-<run-id>.md
   ivista-run-<run-id>.zip
 ```
 
-任务完成后可以导出报告或归档包：
+导出报告：
 
 ```bash
 ivista run export --format markdown
 ivista run export --format zip
 ```
 
-Markdown 报告会包含 run 元信息、命令数量、失败命令、产物链接、截图预览、可访问性文本快照。zip 导出会包含整个 run 目录，并额外带一份生成好的 `run-report.md`。
+Markdown 报告包含元信息、命令数量、失败命令、素材链接、截图预览和文本快照。zip 会包含整个 run 目录和 `run-report.md`。
+
+## 真机
+
+iVista 可以通过 USB 或 CoreDevice wireless tunnel 在真机上启动 WDA。建议在宿主 iOS App 项目目录下运行，这样 iVista 可以推断签名配置。
+
+```bash
+ivista device list --connected
+ivista device diagnose --device <device-udid>
+ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
+ivista observe --port <port>
+```
+
+如果签名无法自动推断：
+
+```bash
+ivista wda start \
+  --device <device-udid> \
+  --signing-team <TEAMID> \
+  --wda-bundle-id <host.bundle.id>.ivista.wda \
+  --auto-port \
+  --wait 180000
+```
+
+无线真机可用的前提是 `devicectl` 能在局域网看到设备并提供 CoreDevice tunnel 地址。可以用 `--usb` 强制走 USB 转发。
 
 ## CLI 命令参考
 
-```bash
-ivista version
-ivista update [--ref main]
-ivista doctor [--json]
-ivista run start [--project .] [--conversation <id>] [--run <id>]
-ivista run current [--json]
-ivista run export [--format markdown|zip] [--output report.md]
+README 只保留快速上手路径。完整命令、示例和常用参数见 [docs/cli.zh-CN.md](docs/cli.zh-CN.md)，英文版见 [docs/cli.md](docs/cli.md)。
 
-ivista simulator list [--all] [--booted] [--iphone|--ipad] [--json]
-ivista simulator boot
-ivista simulator boot 1
-ivista simulator boot --name "iPhone 17"
-ivista simulator boot --udid <simulator-udid>
-ivista device list [--connected] [--json]
-ivista device diagnose [--device <device-udid>] [--port 8100]
-
-ivista wda cache status
-ivista wda prepare [--ref ivista-wda-v0.1.3]
-ivista wda start [--auto-port]
-ivista wda start --simulator "iPhone 17" [--port 8100]
-ivista wda start --simulator "iPhone 17" --auto-port
-ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
-ivista wda stop [--port 8100]
-ivista wda status [--port 8100]
-
-ivista screen shot [--port 8100] [--output /tmp/ivista.png]
-ivista screen source [--port 8100]
-ivista screen texts [--port 8100]
-ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
-
-ivista act home [--port 8100]
-ivista act tap --x 120 --y 500
-ivista act tap --text "Wi-Fi"
-ivista act tap --contains "语言"
-ivista act double-tap --x 120 --y 500
-ivista act double-tap --text "照片"
-ivista act two-finger-tap
-ivista act long-press --x 120 --y 500 [--duration 1]
-ivista act long-press --text "App" [--duration 1]
-ivista act drag --from-x 100 --from-y 600 --to-x 300 --to-y 200 [--duration 0.5]
-ivista act pinch --scale 0.5 --velocity -1
-ivista act rotate --rotation 1.57 --velocity 1
-ivista act input "hello"
-ivista act swipe --direction up
-
-ivista keyboard dismiss
-
-ivista alert accept [--name OK]
-ivista alert dismiss [--name Cancel]
-ivista alert text
-ivista alert input "hello"
-ivista alert buttons
-
-ivista device lock
-ivista device unlock
-ivista device locked
-ivista device info
-ivista device battery
-ivista device press --name volumeUp
-
-ivista app launch --bundle-id com.example.app
-ivista app terminate --bundle-id com.example.app
-```
-
-常用参数：
-
-- `--json`：输出原始 JSON。
-- `--simulator <name|udid>`：目标 Simulator 名称或 UDID。
-- `--device <name|udid>`：目标物理 iOS 设备名称或 UDID。
-- `--name <name>`：Simulator 名称。
-- `--udid <udid>`：目标 UDID。
-- `--bundle-id <id>`：App bundle id。
-- `--base-url <url>`：覆盖 WDA base URL。
-- `--port <port>`：WDA 端口，默认 `8100`。
-- `--auto-port`：自动选择可用 WDA 端口。
-- `--project <path>`、`--conversation <id>`、`--run <id>` 和 `--title <title>`：设置素材归档使用的项目、对话和 run 元信息。
-- `--workspace`、`--ios-project`、`--scheme`、`--signing-team` 和 `--wda-bundle-id`：真机 WDA 签名参数。
-- `--network` 和 `--usb`：强制真机传输模式。默认情况下，如果 `devicectl` 返回 `transportType=localNetwork`，iVista 会使用 CoreDevice tunnel。
-- `--output <path>`：保存输出文件，目前用于截图。
-- `--text <text>`、`--contains <text>`、`--regex <pattern>` 和 `--index <n>`：按 Accessibility 的 `name`、`label` 或 `value` 匹配元素，用于语义操作。
-- `--duration <seconds>`：手势持续时间。
-- `--scale <number>` 和 `--velocity <number>`：缩放手势参数。
-- `--rotation <radians>`：旋转手势角度。
-- `--key-names <names>`：收起键盘时使用的候选按键名，逗号分隔。
-- `--wda-path <path>`：使用本地 WDA 工程。
-- `--repo <url>` 和 `--ref <ref>`：覆盖 WDA Git 源和 ref。
-- `--timeout <ms>` 和 `--wait <ms>`：调整命令超时和 WDA 启动等待时间。
-
-## WebDriverAgent 管理
+## WebDriverAgent
 
 iVista 默认自动管理 WebDriverAgent。普通用户不需要手动 clone WDA。
-
-`ivista wda start` 是有状态的：它会先检查目标端口上是否已经有可用 WDA，可以用就直接复用。如果端口被其他进程占用，它会直接返回修复建议，而不是继续等一个注定失败的 `xcodebuild`。
 
 默认值：
 
@@ -223,123 +192,46 @@ iVista 默认自动管理 WebDriverAgent。普通用户不需要手动 clone WDA
 - WDA cache：`~/.ivista/cache/webdriveragent/<ref>/`
 - WDA port：`8100`
 
-默认 WDA ref 来自 `ivista-wda` fork 的固定 tag。CLI 版本和 WDA 版本独立演进：CLI 固定一个已验证的 WDA ref，WDA fork 可以在自己的 `develop` 分支继续开发，并通过新 tag 发布。
+CLI 会固定一个已验证的 WDA ref。WDA fork 独立演进，并在运行时下载到本地缓存。
 
-需要时可以覆盖 WDA 源：
+只有需要调试或使用企业 fork 时才覆盖 WDA：
 
 ```bash
 ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
 ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
-```
-
-离线、企业 fork 或调试 WDA 本身时，可以使用本地 WDA 路径：
-
-```bash
 ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
-```
-
-真机建议在宿主 iOS App 项目目录下运行，这样 iVista 可以自动推断签名：
-
-```bash
-ivista device list --connected
-ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port --wait 180000
-```
-
-如果签名无法自动推断，可以传 `--signing-team <TEAMID>`，必要时再传 `--wda-bundle-id <bundle-id>`。
-
-无线设备可以用，前提是 Xcode/devicectl 已经能在局域网看到这台设备，并提供 CoreDevice tunnel 地址。iVista 会识别 `transportType=localNetwork`，并直接通过这个 tunnel 访问 WDA。如果想强制走 USB `iproxy` 转发，可以加 `--usb`。
-
-排查无线真机前可以先跑诊断：
-
-```bash
-ivista device diagnose --device <device-udid>
-ivista device diagnose --device <device-udid> --port 8211
-```
-
-它会检查配对、Developer Mode、CoreDevice 连接、无线 tunnel 地址、USB fallback 所需的 `iproxy`，以及在传入端口时检查 WDA `/status`。
-
-已验证的真机示例：
-
-```bash
-# USB 路径
-ivista wda start --device <device-udid> --usb --signing-team <TEAMID> --wda-bundle-id <bundle-id> --auto-port --wait 180000
-
-# CoreDevice tunnel 无线路径
-ivista device list --connected --json
-ivista wda start --device <device-udid> --network --signing-team <TEAMID> --wda-bundle-id <bundle-id> --port 8211 --wait 180000
-ivista screen shot --port 8211 --output /tmp/ivista.png
-ivista screen source --port 8211
-```
-
-WDA 通过 CoreDevice tunnel 启动后，后续命令仍然可以传逻辑上的 `--port`；iVista 会从 session 里自动解析到保存下来的 tunnel URL。
-
-## 配置
-
-iVista 会读取这些环境变量：
-
-- `IVISTA_HOME`：覆盖 iVista 缓存、session 和日志目录。
-- `IVISTA_WDA_REPO`：覆盖 WebDriverAgent Git 仓库。
-- `IVISTA_WDA_REF`：覆盖 WebDriverAgent Git ref。
-- `IVISTA_WDA_PORT`：覆盖默认 WDA 端口。
-- `IVISTA_WDA_BASE_URL`：连接已经运行中的 WDA endpoint。
-
-示例：
-
-```bash
-IVISTA_WDA_PORT=8200 ivista wda start --simulator "iPhone 17"
-IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista screen shot
 ```
 
 ## Agent Plugin
 
-本仓库包含一个 skill-only Codex / Claude Code Plugin，位于 [plugins/ivista](plugins/ivista)。它不暴露 MCP tools，只负责教宿主 Agent 什么时候以及如何安装和调用 `ivista` CLI。
+Plugin 是 skill-only：只安装 Agent 使用说明，不包含 CLI runtime。请先单独安装 CLI。
 
-Plugin 只安装 Agent 使用说明。CLI 需要单独安装：
-
-```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
-ivista doctor
-```
-
-安装到 Codex：
+Codex：
 
 ```bash
 codex plugin marketplace add LLLLLayer/ivista
 ```
 
-然后打开 Codex，在 plugin marketplace 里安装 `iVista`。如果要固定到某个版本，可以加 `--ref v0.1.30`。
-
-如果是从当前 checkout 做本地开发测试：
+然后打开 Codex，在 plugin marketplace 里安装 `iVista`。固定到某个版本：
 
 ```bash
-codex plugin marketplace add .
+codex plugin marketplace add LLLLLayer/ivista --ref v0.1.30
 ```
 
-安装到 Claude Code：
+Claude Code：
 
 ```text
 /plugin marketplace add LLLLLayer/ivista
 /plugin install ivista@ivista
 ```
 
-从当前 checkout 本地测试 Claude Code：
+本地测试 Claude Code：
 
 ```bash
 claude --plugin-dir ./plugins/ivista
 ```
 
-Plugin 目录保持轻量：
-
-- [.agents/plugins/marketplace.json](.agents/plugins/marketplace.json)：仓库级 Codex marketplace manifest。
-- [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json)：仓库级 Claude Code marketplace manifest。
-- [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json)：Codex plugin manifest。
-- [plugins/ivista/.claude-plugin/plugin.json](plugins/ivista/.claude-plugin/plugin.json)：Claude Code plugin manifest。
-- [plugins/ivista/README.md](plugins/ivista/README.md)：plugin 使用说明。
-- [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md)：安装和环境修复说明。
-- [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md)：设备操作说明。
-- [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md)：run 报告导出说明。
-
-Claude Code 里 skill 会带 plugin 命名空间：
+Claude Code skill 名称：
 
 ```text
 /ivista:ivista-install
@@ -347,101 +239,68 @@ Claude Code 里 skill 会带 plugin 命名空间：
 /ivista:ivista-report
 ```
 
-CLI 实现不放在 plugin bundle 内：
+## 配置
 
-- [bin/ivista.mjs](bin/ivista.mjs)：CLI 入口。
-- [src/ivista-runtime.mjs](src/ivista-runtime.mjs)：tool registry 和 runtime dispatcher。
-- [src/core.mjs](src/core.mjs)、[src/devices.mjs](src/devices.mjs)、[src/wda.mjs](src/wda.mjs)、[src/actions.mjs](src/actions.mjs)、[src/sessions.mjs](src/sessions.mjs) 和 [src/doctor.mjs](src/doctor.mjs)：按职责拆分的 runtime 模块。
+- `IVISTA_HOME`：覆盖 iVista 缓存、session 和日志目录。
+- `IVISTA_WDA_REPO`：覆盖 WebDriverAgent Git 仓库。
+- `IVISTA_WDA_REF`：覆盖 WebDriverAgent Git ref。
+- `IVISTA_WDA_PORT`：覆盖默认 WDA 端口。
+- `IVISTA_WDA_BASE_URL`：连接已运行的 WDA endpoint。
+
+示例：
+
+```bash
+IVISTA_WDA_PORT=8200 ivista wda start --simulator "iPhone 17"
+IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista observe
+```
+
+## 排查问题
+
+- 先跑 `ivista doctor`。
+- 如果 `8100` 端口被占用，用 `ivista wda start --auto-port`。
+- 用 `ivista wda stop --port <port>` 清理旧 runner。
+- Agent 使用时优先用 `ivista observe --json`，不要拆成多条 screenshot/source/texts 命令。
+- 真机或无线问题先跑 `ivista device diagnose --device <udid>`。
+- 如果 Xcode 不能构建到真机，检查设备是否解锁、是否信任这台 Mac、是否开启 Developer Mode，以及当前 Xcode 是否支持该 iOS 版本。
 
 ## 开发
-
-安装并运行检查：
 
 ```bash
 npm install
 npm run check
+npm run check:release
 npm run doctor
 ```
 
-直接从仓库运行 CLI：
+从 checkout 直接运行：
 
 ```bash
 node bin/ivista.mjs version
 node bin/ivista.mjs simulator list
 ```
 
-本地 WDA 开发时，把 WDA fork 放在项目旁边：
+WDA fork 保持为独立且被忽略的 checkout：
 
 ```text
 ivista/
-  ivista-wda/  # 被外层 iVista repo 忽略
+  ivista-wda/  # 独立 git repo，被本 repo 忽略
 ```
 
-`ivista-wda/` 是 `git@github.com:LLLLLayer/ivista-wda.git` 的独立 Git checkout。它被本仓库忽略，应当作为独立仓库开发、建分支、打 tag、push。
+## 当前范围
 
-## 项目结构
-
-```text
-.
-├── bin/
-│   └── ivista.mjs
-├── src/
-│   ├── actions.mjs
-│   ├── core.mjs
-│   ├── devices.mjs
-│   ├── doctor.mjs
-│   ├── ivista-runtime.mjs
-│   ├── sessions.mjs
-│   └── wda.mjs
-├── docs/
-│   └── iVista-planning.md
-├── .claude-plugin/
-│   └── marketplace.json
-├── plugins/
-│   └── ivista/
-│       ├── .claude-plugin/
-│       │   └── plugin.json
-│       ├── .codex-plugin/
-│       │   └── plugin.json
-│       ├── README.md
-│       └── skills/
-│           ├── ivista-install/
-│           │   └── SKILL.md
-│           ├── ivista-operate/
-│           │   └── SKILL.md
-│           └── ivista-report/
-│               └── SKILL.md
-├── .agents/
-│   └── plugins/
-│       └── marketplace.json
-├── package.json
-├── LICENSE
-├── README.md
-└── README.zh-CN.md
-```
-
-## 当前范围和限制
-
-- 当前主路径是 Simulator。
-- 真机已经支持本地 USB 和 CoreDevice 无线 WDA 路径，但还不是覆盖所有签名、信任和设备状态的完整一键启动流程。
+- Simulator 是本地 Agent 验证最快、最稳定的路径。
+- 真机 USB 和 CoreDevice 无线路径可用，但签名、信任、Developer Mode、Xcode/iOS 兼容性仍可能需要本机配置。
 - iVista 执行确定性 WDA 动作，不内置视觉规划器。
-- Recipe、App debug hook、Midscene adapter 和设备农场式执行仍在规划中。
-- Simulator 验证很快也很有用，但不能完全替代真机测试。
+- Recipe、App debug hook 和设备农场式执行是后续工作。
 
-## License
+## License 和开源软件使用说明
 
 iVista 使用 [MIT License](LICENSE) 开源。
 
-## 开源软件使用说明
-
-iVista 主项目使用 MIT License。CLI 不会把 WebDriverAgent 打包进本仓库的 npm 包、Codex Plugin bundle 或 Claude Code Plugin bundle。
-
-iVista 默认在运行时下载固定版本的 WDA fork：
+CLI 不会把 WebDriverAgent 打包进本仓库的 npm 包、Codex plugin bundle 或 Claude Code plugin bundle。iVista 默认在运行时下载固定版本的 WDA fork：
 
 - WDA repo：`https://github.com/LLLLLayer/ivista-wda.git`
 - WDA ref：`ivista-wda-v0.1.3`
 - 缓存目录：`~/.ivista/cache/webdriveragent/<ref>/`
 
-WDA fork 是独立的开源项目，有自己的许可证和第三方声明。如果你分发定制过的 WDA 源码或二进制产物，需要保留 WDA 仓库中的 license 和 vendor notices。
-
-iVista 还会调用用户本机工具，例如 Xcode、`xcodebuild`、`xcrun simctl`、Git、Node.js 和 npm。这些工具不随 iVista 分发，仍受各自许可证约束。
+WDA fork 是独立开源项目，有自己的许可证和第三方声明。iVista 还会调用本机工具，例如 Xcode、`xcodebuild`、`xcrun simctl`、Git、Node.js 和 npm；这些工具不随 iVista 分发，仍受各自许可证约束。

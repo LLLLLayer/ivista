@@ -23,7 +23,7 @@ Do not use iVista for generic web browser automation. Use browser tools for web 
 
 ## Safety
 
-- Observe before acting: prefer `ivista screen shot` and `ivista screen source` before taps or gestures.
+- Observe when state is uncertain, after navigation/state changes, and before retries or reports. Use targeted waits for tight action sequences.
 - Avoid destructive app actions unless the user clearly requests them.
 - Treat Simulator results as fast validation, not full real-device equivalence.
 - For real devices, explain that signing, trust, Developer Mode, and port forwarding may still be required.

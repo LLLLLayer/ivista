@@ -35,15 +35,21 @@ ivista wda status --port <port>
 
 ## Observe
 
-Always observe before acting.
+Always observe before acting. Prefer the single checkpoint command:
+
+```bash
+ivista observe --port <port>
+```
+
+`observe` captures a screenshot artifact, source artifact, visible text snapshot, active app info, and WDA status into the current run directory. Use `--json` when an Agent needs artifact paths and structured text candidates.
+
+Use lower-level reads only when needed:
 
 ```bash
 ivista screen shot --port <port>
 ivista screen source --port <port>
 ivista screen texts --port <port>
 ```
-
-Use screenshots for visual state. Use `screen texts` before semantic actions, and use source for deeper labels, coordinates, and accessibility structure.
 
 ## Common Actions
 
@@ -63,11 +69,14 @@ ivista act rotate --port <port> --rotation 1.57 --velocity 1
 ivista act input "hello" --port <port>
 ivista act swipe --port <port> --direction up
 ivista wait text "Done" --port <port> --timeout 10000
+ivista wait gone "Loading" --port <port> --timeout 10000
+ivista wait idle --port <port> --stable-ms 1000 --timeout 10000
+ivista wait app --port <port> --bundle-id com.example.app --timeout 10000
 ```
 
 Prefer `--text`, `--contains`, or `--regex` when the target appears in Accessibility. Use coordinates when the app is a game, canvas, custom-rendered screen, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
 
-Text matching is normalized for case and whitespace. When several elements match, iVista prefers visible, enabled, accessible, smaller interactive elements over broad containers; still inspect candidates when the first match is not the intended target.
+Text matching is normalized for case and whitespace. When several elements match, iVista prefers visible, enabled, accessible, smaller interactive elements over broad containers; still inspect candidates when the first match is not the intended target. When text is not found, failed semantic actions return nearby candidates and fix hints. Use those candidates to retry with `--contains`, `--regex`, or `--index`.
 
 ## Keyboard, Alerts, Device
 
@@ -198,15 +207,15 @@ Real-device prerequisites:
 - `iproxy` is installed and available in PATH for USB forwarding.
 - First launch may require a longer `--wait` because Xcode may create provisioning assets.
 
-## Agent Workflow
+## Observation Strategy
 
 For navigation tasks:
 
 1. Confirm WDA with `ivista wda status --port <port>`.
 2. Launch the target app if needed.
-3. Capture screenshot and source.
-4. Use source labels and coordinates when possible.
-5. Tap or gesture.
-6. Re-capture screenshot/source as a checkpoint.
+3. Run `ivista observe --port <port> --json` when the current screen is uncertain or when a full checkpoint is useful.
+4. Prefer `wait idle`, `wait text`, `wait gone`, or `wait app` for tight action sequences.
+5. Tap or gesture with semantic selectors when possible.
+6. Observe again after page transitions, alert handling, important state changes, failed semantic actions, or before exporting a report.
 
-For smoke tests, keep a short trace of commands and save screenshots under `/tmp` so the user can inspect the result.
+For smoke tests, start an iVista run first and let `observe` store important checkpoints in `~/.ivista/projects/...`; avoid ad-hoc `/tmp` files unless the user asks for a specific output path.

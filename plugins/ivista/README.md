@@ -81,10 +81,14 @@ ivista doctor
 - `ivista wda start`
 - `ivista wda stop`
 - `ivista wda status`
+- `ivista observe`
 - `ivista screen shot`
 - `ivista screen source`
 - `ivista screen texts`
 - `ivista wait text`
+- `ivista wait gone`
+- `ivista wait idle`
+- `ivista wait app`
 - `ivista act home`
 - `ivista act tap`
 - `ivista act double-tap`
@@ -119,7 +123,7 @@ ivista doctor
 ivista simulator list
 ivista simulator boot --name "iPhone 16"
 ivista wda start --simulator "iPhone 16" --auto-port
-ivista screen shot --output /tmp/ivista.png
+ivista observe
 ivista act home
 ivista wda stop
 ```

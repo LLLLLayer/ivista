@@ -27,6 +27,7 @@ import {
   toolKeyboardDismiss,
   toolLaunchApp,
   toolLongPress,
+  toolObserve,
   toolPinch,
   toolRotate,
   toolScreenTexts,
@@ -36,6 +37,9 @@ import {
   toolTap,
   toolTerminateApp,
   toolTwoFingerTap,
+  toolWaitApp,
+  toolWaitGone,
+  toolWaitIdle,
   toolWaitText,
 } from "./actions.mjs";
 
@@ -44,6 +48,12 @@ const semanticElementProperties = {
   contains: { type: ["string", "boolean"] },
   regex: { type: ["string", "boolean"] },
   index: { type: "number" },
+  timeoutMs: { type: "number" },
+};
+
+const wdaConnectionProperties = {
+  baseUrl: { type: "string" },
+  port: { type: "number" },
   timeoutMs: { type: "number" },
 };
 
@@ -241,6 +251,16 @@ export const tools = {
     inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" }, output: { type: "string" } } },
     handler: toolScreenshot,
   },
+  ivista_observe: {
+    description: "Capture a complete agent checkpoint: WDA status, screenshot artifact, source artifact, visible texts, and active app info.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...wdaConnectionProperties,
+      },
+    },
+    handler: toolObserve,
+  },
   ivista_source: {
     description: "Read the current WDA source/accessibility tree.",
     inputSchema: { type: "object", properties: { baseUrl: { type: "string" }, port: { type: "number" } } },
@@ -262,6 +282,41 @@ export const tools = {
       },
     },
     handler: toolWaitText,
+  },
+  ivista_wait_gone: {
+    description: "Wait until accessibility text disappears from the current WDA source tree.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...semanticElementProperties,
+        ...wdaConnectionProperties,
+      },
+    },
+    handler: toolWaitGone,
+  },
+  ivista_wait_idle: {
+    description: "Wait until the accessibility tree stays stable for a short period.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        stableMs: { type: "number" },
+        pollMs: { type: "number" },
+        ...wdaConnectionProperties,
+      },
+    },
+    handler: toolWaitIdle,
+  },
+  ivista_wait_app: {
+    description: "Wait until the active app bundle id matches the expected bundle id.",
+    inputSchema: {
+      type: "object",
+      required: ["bundleId"],
+      properties: {
+        bundleId: { type: "string" },
+        ...wdaConnectionProperties,
+      },
+    },
+    handler: toolWaitApp,
   },
   ivista_tap: {
     description: "Tap screen coordinates or an accessibility text match through WDA.",

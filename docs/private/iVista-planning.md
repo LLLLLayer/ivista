@@ -68,7 +68,10 @@ plugins/ivista/skills/ivista-install/SKILL.md
 plugins/ivista/skills/ivista-operate/SKILL.md
 plugins/ivista/skills/ivista-report/SKILL.md
 .claude-plugin/marketplace.json
-docs/iVista-planning.md
+docs/README.md
+docs/private/iVista-planning.md
+docs/cli.md
+docs/cli.zh-CN.md
 README.md
 README.zh-CN.md
 ```
@@ -208,17 +211,23 @@ ivista wda status [--port 8100]
 ivista run start [--project .] [--conversation <id>] [--run <id>]
 ivista run current
 ivista run export [--format markdown|zip]
+ivista observe [--port 8100] [--json]
 ivista screen shot [--port 8100] [--output /tmp/ivista.png] [--json]
 ivista screen source [--port 8100] [--json]
 ivista screen texts [--port 8100] [--json]
 ivista wait text "Wi-Fi" [--port 8100] [--timeout 10000]
+ivista wait gone "Loading" [--port 8100] [--timeout 10000]
+ivista wait idle [--port 8100] [--stable-ms 1000]
+ivista wait app --bundle-id com.example.app
 ```
 
 用途：
 
 - 给 Agent 看当前屏幕。
+- 给 Agent 一个单命令 checkpoint：截图、source、可访问性文本、active app 和 WDA status。
 - 给调试报告保存现场。
 - 结合 source/accessibility texts 做更稳定的元素定位和等待。
+- 通过 `wait text`、`wait gone`、`wait idle`、`wait app` 避免操作后立刻读屏导致误判。
 - 默认将截图、source、texts 和命令事件按项目/AI 对话/run 归档到 `~/.ivista/projects/<project-key>/conversations/<conversation-id>/runs/<run-id>/`，后续用于导出对话报告。
 - `run export --format markdown` 输出带截图预览、文本快照摘要、失败命令、命令计数 的可读报告。
 - `run export --format zip` 会包含 run 目录和一份 `run-report.md`，方便交给用户或挂到后续对话里继续分析。
@@ -518,8 +527,8 @@ ivista wda status --port 8200
 ### 9.2 验证设备可操作
 
 ```bash
-ivista screen shot --port 8200 --output /tmp/ivista.png
-ivista screen source --port 8200
+ivista observe --port 8200
+ivista wait idle --port 8200
 ivista act home --port 8200
 ivista act tap --port 8200 --x 200 --y 500
 ivista act input "hello from ivista" --port 8200
@@ -539,14 +548,13 @@ Agent 应执行：
 ivista doctor
 ivista wda status --json
 ivista app launch --bundle-id com.example.app
-ivista screen shot --json
-ivista screen source --json
-ivista screen texts --json
+ivista observe --json
+ivista wait idle
 ivista wait text "Done"
 ivista act tap/input/swipe
 ```
 
-每一步都应该拿截图或 source 做 checkpoint。
+每一步都应该用 `ivista observe --json` 做 checkpoint；需要等待页面稳定时先用 `wait idle`、`wait text` 或 `wait gone`。
 
 ## 10. 高频测试建议
 
