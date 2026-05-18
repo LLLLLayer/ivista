@@ -9,6 +9,7 @@
   "files": [
     "bin",
     "src",
+    "scripts",
     "plugins/ivista",
     "docs",
     ".agents/plugins/marketplace.json",
@@ -16,6 +17,7 @@
   ],
   "scripts": {
     "check": "find src bin -name '*.mjs' -print0 | xargs -0 -n1 node --check",
+    "check:release": "node scripts/check-release.mjs",
     "doctor": "node bin/ivista.mjs doctor"
   },
   "keywords": [

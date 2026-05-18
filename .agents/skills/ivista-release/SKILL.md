@@ -10,7 +10,7 @@ This skill releases the iVista project. iVista has two related repositories:
 - Outer CLI/plugin/docs repo: project root, remote `git@github.com:LLLLLayer/ivista.git`.
 - WDA fork: `ivista-wda/`, remote `git@github.com:LLLLLayer/ivista-wda.git`.
 
-The npm package must not include the `ivista-wda/` checkout. The outer package should only include `bin`, `src`, `plugins/ivista`, `docs`, `.agents/plugins/marketplace.json`, package metadata, README files, and LICENSE.
+The npm package must not include the `ivista-wda/` checkout. The outer package should only include `bin`, `src`, `scripts`, `plugins/ivista`, `docs`, `.agents/plugins/marketplace.json`, package metadata, README files, and LICENSE.
 
 ## Release Order
 
@@ -52,11 +52,19 @@ rg -n "0\\.1\\.|v0\\.1\\.|ivista-wda-v" package.json bin src README.md README.zh
 
 ```bash
 npm run check
+npm run check:release
 git diff --check
 npm pack --dry-run
 ```
 
 Confirm dry-run package contents. `ivista-wda/` must not appear.
+
+`npm run check:release` is the guardrail for version drift. It must fail if:
+
+- `package.json`, `src/cli/constants.mjs`, Codex plugin manifest, Claude plugin manifest, or Claude marketplace manifest disagree on the CLI version.
+- README, Chinese README, plugin docs, or skill references contain an old CLI tag such as a previous `v0.1.x` release.
+
+WDA refs such as `ivista-wda-v0.1.3` are independent and are allowed to differ from the CLI version.
 
 5. Commit, tag, and push the outer repo:
 
