@@ -4,6 +4,7 @@ import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
@@ -100,24 +101,34 @@ export function runCommand(command, args = [], options = {}) {
 }
 
 export function createGitProgressRenderer(label) {
-  const bucketSize = 25;
-  let lastBucket = -1;
-  let lastStage = "";
+  const stages = new Map();
+  const stageOrder = ["Counting objects", "Compressing objects", "Receiving objects", "Resolving deltas", "Updating files"];
+  let lastText = "";
   let rendered = false;
-  const writeLine = (text) => {
+  const isTty = Boolean(process.stderr.isTTY);
+  const format = () => {
+    const parts = stageOrder
+      .filter((stage) => stages.has(stage))
+      .map((stage) => `${stage.replace(" objects", "")} ${String(stages.get(stage)).padStart(3)}%`);
+    return parts.length > 0 ? `${label}: ${parts.join(" | ")}` : `${label}: starting`;
+  };
+  const writeProgress = () => {
     rendered = true;
-    process.stderr.write(`${text}\n`);
+    const text = format();
+    if (text === lastText) return;
+    lastText = text;
+    if (!isTty) return;
+    readline.clearLine(process.stderr, 0);
+    readline.cursorTo(process.stderr, 0);
+    process.stderr.write(text);
   };
   const render = (stage, percent) => {
     const clamped = Math.max(0, Math.min(100, percent));
-    const bucket = clamped === 100 ? 100 : Math.floor(clamped / bucketSize) * bucketSize;
-    if (stage === lastStage && bucket === lastBucket) return;
-    lastStage = stage;
-    lastBucket = bucket;
-    const width = 20;
-    const filled = Math.round((bucket / 100) * width);
-    const bar = `${"#".repeat(filled)}${"-".repeat(width - filled)}`;
-    writeLine(`${label}: ${stage} [${bar}] ${String(bucket).padStart(3)}%`);
+    const bucket = clamped === 100 ? 100 : Math.floor(clamped / 5) * 5;
+    const previous = stages.get(stage);
+    if (previous === bucket) return;
+    stages.set(stage, bucket);
+    writeProgress();
   };
   return {
     update(chunk) {
@@ -130,7 +141,13 @@ export function createGitProgressRenderer(label) {
       }
     },
     done() {
-      if (!rendered) writeLine(`${label}: done`);
+      if (!rendered) stages.set("Updating files", 100);
+      const summary = format();
+      if (isTty) {
+        readline.clearLine(process.stderr, 0);
+        readline.cursorTo(process.stderr, 0);
+      }
+      process.stderr.write(`${summary}\n`);
     },
   };
 }

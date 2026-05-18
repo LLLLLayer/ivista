@@ -17,7 +17,7 @@ Install for Codex:
 codex plugin marketplace add LLLLLayer/ivista
 ```
 
-Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v1.0.2`.
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v1.0.3`.
 
 For local development from this checkout:
 
@@ -50,7 +50,7 @@ The Claude Code skill names are namespaced by the plugin name:
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.2
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.3
 ivista doctor
 ```
 
