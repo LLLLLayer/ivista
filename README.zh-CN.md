@@ -41,14 +41,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 从仓库安装最新 tag：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.28
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.29
 ivista doctor
 ```
 
 更新已有的全局安装：
 
 ```bash
-ivista update --ref v0.1.28
+ivista update --ref v0.1.29
 ```
 
 本地开发安装：
@@ -117,7 +117,7 @@ ivista run export --format markdown
 ivista run export --format zip
 ```
 
-Markdown 报告会包含 run 元信息、命令数量、失败命令、产物链接、截图预览、可访问性文本快照，以及便于继续排查的原始命令 JSON。zip 导出会包含整个 run 目录，并额外带一份生成好的 `run-report.md`。
+Markdown 报告会包含 run 元信息、命令数量、失败命令、产物链接、截图预览、可访问性文本快照。zip 导出会包含整个 run 目录，并额外带一份生成好的 `run-report.md`。
 
 ## CLI 命令参考
 
@@ -299,7 +299,7 @@ Plugin 目录保持轻量：
 - [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json)：plugin manifest。
 - [plugins/ivista/README.md](plugins/ivista/README.md)：plugin 使用说明。
 - [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md)：安装和环境修复说明。
-- [plugins/ivista/skills/ivista/SKILL.md](plugins/ivista/skills/ivista/SKILL.md)：设备操作说明。
+- [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md)：设备操作说明。
 - [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md)：run 报告导出说明。
 
 CLI 实现不放在 plugin bundle 内：
@@ -358,7 +358,7 @@ ivista/
 │       └── skills/
 │           ├── ivista-install/
 │           │   └── SKILL.md
-│           ├── ivista/
+│           ├── ivista-operate/
 │           │   └── SKILL.md
 │           └── ivista-report/
 │               └── SKILL.md

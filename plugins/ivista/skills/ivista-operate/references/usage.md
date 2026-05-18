@@ -24,7 +24,7 @@ ivista run export --format markdown
 ivista run export --format zip
 ```
 
-The Markdown report contains metadata, command counts, failures, screenshot previews, accessibility text snapshots, and raw command summaries. The zip export includes the run folder plus `run-report.md`.
+The Markdown report contains metadata, command counts, failures, screenshot previews, accessibility text snapshots,. The zip export includes the run folder plus `run-report.md`.
 
 If there is already a booted Simulator:
 

@@ -1,9 +1,9 @@
 ---
-name: ivista
-description: Use iVista when the user wants Codex to operate an already installed ivista CLI against an iOS Simulator or iPhone/iPad through WebDriverAgent, including WDA startup/status, screenshots, source reads, taps, text input, gestures, app launch/termination, alerts, device controls, or mobile smoke-test flows. For installing, updating, diagnosing, or preparing iVista, use the ivista-install skill instead.
+name: ivista-operate
+description: Use this skill when the user wants Codex to operate an already installed ivista CLI against an iOS Simulator or iPhone/iPad through WebDriverAgent, including WDA startup/status, screenshots, source reads, taps, text input, gestures, app launch/termination, alerts, device controls, or mobile smoke-test flows. For installing, updating, diagnosing, or preparing iVista, use the ivista-install skill instead.
 ---
 
-# iVista
+# iVista Operate
 
 iVista turns an iOS Simulator, iPhone, or iPad into an Agent-operable test surface through the `ivista` CLI.
 

@@ -250,7 +250,7 @@ function eventDescription(event, reportDir) {
     const artifact = event.result?.artifact;
     if (artifact?.path) pieces.push(`[artifact](${relativeLink(reportDir, artifact.path)})`);
     if (event.result?.output) pieces.push(`output \`${event.result.output}\``);
-    if (event.result?.selector) pieces.push(`selector \`${JSON.stringify(event.result.selector)}\``);
+    if (event.result?.selector) pieces.push(`selector \`${selectorText(event.result.selector)}\``);
     if (event.result?.error) pieces.push(`error: ${event.result.error}`);
     return pieces.join(" ");
   }
@@ -270,6 +270,38 @@ function commandStatus(event) {
   if (event.result?.ok === false) return "failed";
   if (event.result?.ok === true) return "ok";
   return "unknown";
+}
+
+function selectorText(selector) {
+  if (!selector || typeof selector !== "object") return "";
+  if (selector.mode && selector.text !== undefined) return `${selector.mode} "${selector.text}"`;
+  return "";
+}
+
+function pointText(point) {
+  if (!point || typeof point !== "object") return "";
+  if (point.x === undefined || point.y === undefined) return "";
+  return `point x=${point.x} y=${point.y}`;
+}
+
+function commandSummary(event, reportDir) {
+  const result = event.result || {};
+  const pieces = [];
+  if (result.error) pieces.push(`error: ${result.error}`);
+  if (result.method) pieces.push(`method: ${result.method}`);
+  if (result.selector) pieces.push(`selector: ${selectorText(result.selector)}`);
+  if (result.match?.summary) pieces.push(`match: ${result.match.summary}`);
+  if (result.point) pieces.push(pointText(result.point));
+  if (result.output) {
+    const output = String(result.output);
+    const label = path.basename(output) || output;
+    pieces.push(`output: [${markdownEscape(label)}](${relativeLink(reportDir, output)})`);
+  }
+  if (result.artifact?.path) pieces.push(`artifact: ${artifactLink(reportDir, result.artifact)}`);
+  if (result.baseUrl) pieces.push(`url: ${result.baseUrl}`);
+  if (result.port) pieces.push(`port: ${result.port}`);
+  if (result.hints?.length) pieces.push(`hint: ${result.hints[0]}`);
+  return pieces.filter(Boolean).join("; ") || commandStatus(event);
 }
 
 function artifactKindCounts(events) {
@@ -376,16 +408,18 @@ export function buildRunMarkdown(ctx, outputPath) {
     }
     lines.push("");
   }
-  lines.push("## Commands", "");
+  lines.push("## Command Summary", "");
   if (commandEvents.length === 0) {
     lines.push("No commands recorded.", "");
   } else {
+    lines.push("| Time | Command | Status | Summary |", "| --- | --- | --- | --- |");
     for (const event of commandEvents) {
-      lines.push(`### ${event.ts} - ${event.command} (${commandStatus(event)})`, "");
-      lines.push("```json", JSON.stringify({ args: event.args, result: event.result }, null, 2), "```", "");
+      lines.push(`| ${markdownEscape(event.ts)} | \`${markdownEscape(event.command)}\` | ${commandStatus(event)} | ${markdownEscape(commandSummary(event, reportDir))} |`);
     }
+    lines.push("");
   }
   lines.push("## Machine-Readable Files", "");
+  lines.push("Use these files for detailed command arguments, compact results, and automation replay/debugging:");
   lines.push(`- Run metadata: ${artifactLink(reportDir, { path: path.join(ctx.run.dir, "run.json") })}`);
   lines.push(`- Event stream: ${artifactLink(reportDir, { path: ctx.run.eventsPath })}`);
   lines.push("");

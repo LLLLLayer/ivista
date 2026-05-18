@@ -41,14 +41,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the latest tagged CLI from this repository:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.28
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.29
 ivista doctor
 ```
 
 Update an existing global install:
 
 ```bash
-ivista update --ref v0.1.28
+ivista update --ref v0.1.29
 ```
 
 For local development from this checkout:
@@ -117,7 +117,7 @@ ivista run export --format markdown
 ivista run export --format zip
 ```
 
-The Markdown report includes run metadata, command counts, failures, artifact links, screenshot previews, text snapshots, and the raw command JSON needed for follow-up debugging. The zip export includes the run directory plus a generated `run-report.md`.
+The Markdown report includes run metadata, command counts, failures, artifact links, screenshot previews, text snapshots. The zip export includes the run directory plus a generated `run-report.md`.
 
 ## CLI Reference
 
@@ -299,7 +299,7 @@ The plugin directory is intentionally thin:
 - [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json): plugin manifest.
 - [plugins/ivista/README.md](plugins/ivista/README.md): plugin-specific usage notes.
 - [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md): install and environment repair instructions.
-- [plugins/ivista/skills/ivista/SKILL.md](plugins/ivista/skills/ivista/SKILL.md): device operation instructions.
+- [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md): device operation instructions.
 - [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md): run report export instructions.
 
 The CLI implementation lives outside the plugin bundle:
@@ -358,7 +358,7 @@ ivista/
 │       └── skills/
 │           ├── ivista-install/
 │           │   └── SKILL.md
-│           ├── ivista/
+│           ├── ivista-operate/
 │           │   └── SKILL.md
 │           └── ivista-report/
 │               └── SKILL.md

@@ -7,7 +7,7 @@ This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, skills
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.28
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.29
 ivista doctor
 ```
 
@@ -68,7 +68,7 @@ ivista doctor
 - `ivista app launch`
 - `ivista app terminate`
 
-Run exports now include richer Markdown reports with screenshot previews, text snapshot summaries, command counts, failures, and raw command JSON. Zip exports include the run directory plus `run-report.md`.
+Run exports now include richer Markdown reports with screenshot previews, text snapshot summaries, command counts, failures. Zip exports include the run directory plus `run-report.md`.
 
 ## Default User Flow
 
@@ -101,5 +101,5 @@ Use `--wda-path` only for offline use, enterprise forks, or WDA debugging.
 ## Skills
 
 - `ivista-install`: install, update, diagnose, repair, and prepare Simulator or real-device prerequisites.
-- `ivista`: operate a Simulator or real device after the CLI is available.
+- `ivista-operate`: operate a Simulator or real device after the CLI is available.
 - `ivista-report`: export Markdown reports or zip debug bundles from project/conversation/run artifacts.

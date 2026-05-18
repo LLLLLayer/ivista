@@ -94,7 +94,7 @@ The Markdown report includes:
 - accessibility text snapshot summaries
 - failure section with fix hints
 - event timeline
-- command summaries with raw JSON
+- human-readable command summary table, not raw JSON blocks
 
 The zip bundle includes:
 
@@ -104,3 +104,5 @@ The zip bundle includes:
 - `run-report.md`
 
 It intentionally excludes generated `ivista-run-*` export files and macOS `._` metadata files.
+
+Keep the Markdown report readable for humans. Do not paste full `run.json`, `events.ndjson`, or command JSON blocks into the report body; link the machine-readable files at the end instead.
