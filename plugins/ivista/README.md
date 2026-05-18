@@ -1,13 +1,40 @@
-# iVista Codex Plugin
+# iVista Agent Plugin
 
-iVista is a CLI-first Codex plugin for iOS Simulator and WebDriverAgent control. The plugin contributes skills that tell Codex how to install and use the `ivista` CLI.
+iVista is a CLI-first plugin for iOS Simulator and WebDriverAgent control. The plugin contributes skills that tell Codex or Claude Code how to install and use the `ivista` CLI.
 
-This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, skills, and plugin docs. The CLI implementation lives at the repository root in `bin/` and `src/`, and is installed through the npm package.
+This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, skills, and plugin docs. The CLI implementation lives at the repository root in `bin/` and `src/`, and is installed through the npm package.
+
+## Host Support
+
+- Codex reads `.codex-plugin/plugin.json`.
+- Claude Code reads `.claude-plugin/plugin.json` and discovers the shared `skills/` directory.
+- Both hosts use the same `ivista-install`, `ivista-operate`, and `ivista-report` skill content.
+
+For local Claude Code testing from this repository:
+
+```bash
+claude --plugin-dir ./plugins/ivista
+```
+
+For repository-level Claude Code marketplace testing, use the root `.claude-plugin/marketplace.json`:
+
+```text
+/plugin marketplace add .
+/plugin install ivista@ivista
+```
+
+The Claude Code skill names are namespaced by the plugin name:
+
+```text
+/ivista:ivista-install
+/ivista:ivista-operate
+/ivista:ivista-report
+```
 
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.29
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
 ivista doctor
 ```
 

@@ -17,7 +17,7 @@ In one sentence: iVista turns an iOS Simulator or connected iPhone into an agent
 - Capture screenshots and accessibility/source trees.
 - Run deterministic WDA actions: coordinate or accessibility-text tap, double tap, two-finger tap, long press, drag, pinch, rotate, type, swipe, Home, keyboard dismiss, alerts, device info, device lock/unlock, hardware button press, app launch, and app termination.
 - Export project/conversation/run reports with screenshots, text snapshots, failures, command history, and zip bundles.
-- Provide a skill-only Codex plugin that teaches agents how to install and call the same `ivista` CLI.
+- Provide a skill-only Codex and Claude Code plugin that teaches agents how to install and call the same `ivista` CLI.
 
 The current implementation supports Simulator workflows plus verified USB and CoreDevice wireless real-device WDA paths. Recipes and app hooks are planned in [docs/iVista-planning.md](docs/iVista-planning.md).
 
@@ -41,14 +41,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the latest tagged CLI from this repository:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.29
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
 ivista doctor
 ```
 
 Update an existing global install:
 
 ```bash
-ivista update --ref v0.1.29
+ivista update --ref v0.1.30
 ```
 
 For local development from this checkout:
@@ -290,17 +290,40 @@ IVISTA_WDA_PORT=8200 ivista wda start --simulator "iPhone 17"
 IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista screen shot
 ```
 
-## Codex Plugin
+## Agent Plugin
 
-This repository includes a skill-only Codex plugin at [plugins/ivista](plugins/ivista). It does not expose MCP tools. It teaches Codex when and how to install and call the `ivista` CLI.
+This repository includes a skill-only Codex and Claude Code plugin at [plugins/ivista](plugins/ivista). It does not expose MCP tools. It teaches the host agent when and how to install and call the `ivista` CLI.
 
 The plugin directory is intentionally thin:
 
-- [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json): plugin manifest.
+- [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json): Claude Code marketplace manifest for the repository.
+- [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json): Codex plugin manifest.
+- [plugins/ivista/.claude-plugin/plugin.json](plugins/ivista/.claude-plugin/plugin.json): Claude Code plugin manifest.
 - [plugins/ivista/README.md](plugins/ivista/README.md): plugin-specific usage notes.
 - [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md): install and environment repair instructions.
 - [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md): device operation instructions.
 - [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md): run report export instructions.
+
+For local Claude Code testing:
+
+```bash
+claude --plugin-dir ./plugins/ivista
+```
+
+For Claude Code marketplace testing from this checkout:
+
+```text
+/plugin marketplace add .
+/plugin install ivista@ivista
+```
+
+Claude Code exposes the skills under the plugin namespace:
+
+```text
+/ivista:ivista-install
+/ivista:ivista-operate
+/ivista:ivista-report
+```
 
 The CLI implementation lives outside the plugin bundle:
 
@@ -350,8 +373,12 @@ ivista/
 │   └── wda.mjs
 ├── docs/
 │   └── iVista-planning.md
+├── .claude-plugin/
+│   └── marketplace.json
 ├── plugins/
 │   └── ivista/
+│       ├── .claude-plugin/
+│       │   └── plugin.json
 │       ├── .codex-plugin/
 │       │   └── plugin.json
 │       ├── README.md
@@ -385,7 +412,7 @@ iVista is released under the [MIT License](LICENSE).
 
 ## Open Source Software Usage
 
-iVista itself is licensed under MIT. The CLI does not vendor WebDriverAgent into this repository's npm package or Codex plugin bundle.
+iVista itself is licensed under MIT. The CLI does not vendor WebDriverAgent into this repository's npm package, Codex plugin bundle, or Claude Code plugin bundle.
 
 By default, iVista downloads a pinned WDA fork at runtime:
 

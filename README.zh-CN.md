@@ -17,7 +17,7 @@ iVista 是一个 CLI-first 的 iOS Simulator 和真机测试控制层，基于 W
 - 获取截图和 accessibility/source 树。
 - 执行确定性的 WDA 动作：坐标或 accessibility 文本点击、双击、双指点击、长按、拖拽、缩放、旋转、输入、滑动、Home、收起键盘、处理弹窗、读取设备信息、锁屏/解锁、硬件按键、启动 App、终止 App。
 - 按项目、对话和 run 导出报告，包含截图、文本快照、失败命令、命令历史和 zip 调试包。
-- 提供 skill-only Codex Plugin，让 Agent 学会安装并调用同一个 `ivista` CLI。
+- 提供 skill-only Codex / Claude Code Plugin，让 Agent 学会安装并调用同一个 `ivista` CLI。
 
 当前实现支持 Simulator 工作流，也已经验证 USB 和 CoreDevice 无线真机 WDA 路径。Recipe 和 App Hook 等能力在 [docs/iVista-planning.md](docs/iVista-planning.md) 中规划。
 
@@ -41,14 +41,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 从仓库安装最新 tag：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.29
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.30
 ivista doctor
 ```
 
 更新已有的全局安装：
 
 ```bash
-ivista update --ref v0.1.29
+ivista update --ref v0.1.30
 ```
 
 本地开发安装：
@@ -290,17 +290,40 @@ IVISTA_WDA_PORT=8200 ivista wda start --simulator "iPhone 17"
 IVISTA_WDA_BASE_URL=http://127.0.0.1:8200 ivista screen shot
 ```
 
-## Codex Plugin
+## Agent Plugin
 
-本仓库包含一个 skill-only Codex Plugin，位于 [plugins/ivista](plugins/ivista)。它不暴露 MCP tools，只负责教 Codex 什么时候以及如何安装和调用 `ivista` CLI。
+本仓库包含一个 skill-only Codex / Claude Code Plugin，位于 [plugins/ivista](plugins/ivista)。它不暴露 MCP tools，只负责教宿主 Agent 什么时候以及如何安装和调用 `ivista` CLI。
 
 Plugin 目录保持轻量：
 
-- [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json)：plugin manifest。
+- [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json)：仓库级 Claude Code marketplace manifest。
+- [plugins/ivista/.codex-plugin/plugin.json](plugins/ivista/.codex-plugin/plugin.json)：Codex plugin manifest。
+- [plugins/ivista/.claude-plugin/plugin.json](plugins/ivista/.claude-plugin/plugin.json)：Claude Code plugin manifest。
 - [plugins/ivista/README.md](plugins/ivista/README.md)：plugin 使用说明。
 - [plugins/ivista/skills/ivista-install/SKILL.md](plugins/ivista/skills/ivista-install/SKILL.md)：安装和环境修复说明。
 - [plugins/ivista/skills/ivista-operate/SKILL.md](plugins/ivista/skills/ivista-operate/SKILL.md)：设备操作说明。
 - [plugins/ivista/skills/ivista-report/SKILL.md](plugins/ivista/skills/ivista-report/SKILL.md)：run 报告导出说明。
+
+本地用 Claude Code 测试：
+
+```bash
+claude --plugin-dir ./plugins/ivista
+```
+
+从当前 checkout 测试 Claude Code marketplace：
+
+```text
+/plugin marketplace add .
+/plugin install ivista@ivista
+```
+
+Claude Code 里 skill 会带 plugin 命名空间：
+
+```text
+/ivista:ivista-install
+/ivista:ivista-operate
+/ivista:ivista-report
+```
 
 CLI 实现不放在 plugin bundle 内：
 
@@ -350,8 +373,12 @@ ivista/
 │   └── wda.mjs
 ├── docs/
 │   └── iVista-planning.md
+├── .claude-plugin/
+│   └── marketplace.json
 ├── plugins/
 │   └── ivista/
+│       ├── .claude-plugin/
+│       │   └── plugin.json
 │       ├── .codex-plugin/
 │       │   └── plugin.json
 │       ├── README.md
@@ -385,7 +412,7 @@ iVista 使用 [MIT License](LICENSE) 开源。
 
 ## 开源软件使用说明
 
-iVista 主项目使用 MIT License。CLI 不会把 WebDriverAgent 打包进本仓库的 npm 包或 Codex Plugin bundle。
+iVista 主项目使用 MIT License。CLI 不会把 WebDriverAgent 打包进本仓库的 npm 包、Codex Plugin bundle 或 Claude Code Plugin bundle。
 
 iVista 默认在运行时下载固定版本的 WDA fork：
 

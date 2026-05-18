@@ -1,6 +1,6 @@
 {
   "name": "ivista",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
   "type": "module",
   "bin": {
@@ -11,7 +11,8 @@
     "src",
     "plugins/ivista",
     "docs",
-    ".agents/plugins/marketplace.json"
+    ".agents/plugins/marketplace.json",
+    ".claude-plugin/marketplace.json"
   ],
   "scripts": {
     "check": "find src bin -name '*.mjs' -print0 | xargs -0 -n1 node --check",
@@ -23,7 +24,8 @@
     "webdriveragent",
     "testing",
     "cli",
-    "codex"
+    "codex",
+    "claude-code"
   ],
   "author": "iVista contributors",
   "license": "MIT",

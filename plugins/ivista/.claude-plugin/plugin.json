@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "ivista",
+  "version": "0.1.30",
+  "description": "CLI-first controls for iOS Simulator and iPhone/iPad through WebDriverAgent.",
+  "author": {
+    "name": "iVista contributors",
+    "email": "maintainers@example.com",
+    "url": "https://github.com/LLLLLayer/ivista"
+  },
+  "homepage": "https://github.com/LLLLLayer/ivista",
+  "repository": "https://github.com/LLLLLayer/ivista",
+  "license": "MIT",
+  "keywords": [
+    "ios",
+    "simulator",
+    "webdriveragent",
+    "testing",
+    "cli",
+    "claude-code"
+  ],
+  "skills": "./skills/"
+}
