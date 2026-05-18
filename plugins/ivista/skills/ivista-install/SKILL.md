@@ -26,7 +26,7 @@ ivista version
 ivista doctor
 ```
 
-Compare the installed CLI version with the release pinned in [references/install.md](references/install.md). If the installed version is missing, older, or different from the pinned release, guide the user through `ivista update --ref <pinned-tag>` or reinstall from the pinned GitHub tag before continuing.
+Compare the installed CLI version with the release pinned in [references/install.md](references/install.md). The skill and CLI should normally be on the same iVista release. If the CLI is missing or older than the pinned release, update or reinstall the CLI to the pinned tag. If the installed CLI is newer than the pinned release, treat the plugin skill as stale and guide the user to update the plugin/skill to the matching CLI release before continuing.
 
 For Simulator setup:
 

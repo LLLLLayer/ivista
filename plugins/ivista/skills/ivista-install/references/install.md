@@ -18,10 +18,12 @@ ivista version
 ivista doctor
 ```
 
-The pinned release for this skill is `v1.0.6`. If `ivista version` is missing, older, or different from `iVista CLI 1.0.6`, update before continuing:
+The pinned release for this skill is `v1.0.7`. The skill and CLI should normally use the same iVista release because command examples and behavior may change across releases.
+
+If `ivista version` is missing or older than `iVista CLI 1.0.7`, update the CLI before continuing:
 
 ```bash
-ivista update --ref v1.0.6
+ivista update --ref v1.0.7
 ```
 
 If `ivista update` is not available or fails because the CLI is too old or broken, reinstall from the pinned tag:
@@ -29,7 +31,24 @@ If `ivista update` is not available or fails because the CLI is too old or broke
 ```bash
 npm uninstall -g ivista
 hash -r
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.6
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.7
+```
+
+If `ivista version` is newer than `iVista CLI 1.0.7`, the plugin skill is probably stale. Update the plugin/skill to the matching CLI release, or install the latest plugin release and rerun this check.
+
+For Codex, pin the plugin marketplace entry to the installed CLI tag when the tag is known:
+
+```bash
+codex plugin marketplace add LLLLLayer/ivista --ref v<installed-cli-version>
+```
+
+Then reinstall or refresh the `iVista` plugin from the Codex plugin marketplace.
+
+For Claude Code, refresh the marketplace entry and reinstall the plugin:
+
+```text
+/plugin marketplace add LLLLLayer/ivista
+/plugin install ivista@ivista
 ```
 
 If `ivista doctor` reports issues, prefer following its fix hints before attempting manual repair.
@@ -39,7 +58,7 @@ If `ivista doctor` reports issues, prefer following its fix hints before attempt
 Install the released CLI from the GitHub npm package source:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.6
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.7
 ```
 
 For local development from a checked-out repo:
@@ -150,8 +169,9 @@ Explain that `rm -rf` recursively deletes the target path without prompting, so 
 
 ## Common Repair Hints
 
-- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.6`.
-- Old or mismatched version: run `ivista update --ref v1.0.6`, or reinstall from the pinned GitHub tag if update fails.
+- `ivista` missing: install with `npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.7`.
+- CLI older than this skill: run `ivista update --ref v1.0.7`, or reinstall from the pinned GitHub tag if update fails.
+- CLI newer than this skill: update the plugin/skill to the matching CLI tag, then rerun `ivista version` and `ivista doctor`.
 - Xcode tools missing: install or select Xcode, then rerun `ivista doctor`.
 - Real device missing: unlock the device, trust this Mac, enable Developer Mode, reconnect USB, then run `ivista device list --connected`.
 - `iproxy` missing: install libimobiledevice/usbmuxd, for example `brew install libimobiledevice`.
