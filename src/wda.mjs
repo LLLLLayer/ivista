@@ -4,7 +4,6 @@ import path from "node:path";
 import {
   DEFAULT_WDA_PORT,
   commandExists,
-  createGitProgressRenderer,
   ensureDir,
   findAvailablePort,
   httpJson,
@@ -265,14 +264,12 @@ export async function toolWdaPrepare(args = {}) {
     return jsonText({ ok: false, error: `WDA project not found at ${cfg.cachePath}` });
   }
   if (!exists) {
-    const progress = args.progress ? createGitProgressRenderer("Downloading WDA") : null;
-    if (args.progress) process.stderr.write(`Downloading WDA ${cfg.ref}\n`);
-    const clone = await runCommand("git", ["clone", "--progress", "--depth", "1", "--branch", cfg.ref, cfg.repo, cfg.cachePath], {
+    if (args.progress) process.stderr.write(`Downloading WDA ${cfg.ref}...\n`);
+    const clone = await runCommand("git", ["clone", "--depth", "1", "--branch", cfg.ref, cfg.repo, cfg.cachePath], {
       timeoutMs: args.timeoutMs || 300000,
-      onStderr: progress ? (chunk) => progress.update(chunk) : undefined,
     });
-    if (progress) progress.done();
     if (!clone.ok) return jsonText({ ok: false, config: cfg, error: clone.stderr || clone.stdout });
+    if (args.progress) process.stderr.write("Downloading WDA: done\n");
   }
   const metadata = {
     repo: cfg.repo,

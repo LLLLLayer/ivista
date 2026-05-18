@@ -4,7 +4,6 @@ import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
@@ -98,58 +97,6 @@ export function runCommand(command, args = [], options = {}) {
       resolve({ ok: code === 0, code, signal, stdout, stderr });
     });
   });
-}
-
-export function createGitProgressRenderer(label) {
-  const stages = new Map();
-  const stageOrder = ["Counting objects", "Compressing objects", "Receiving objects", "Resolving deltas", "Updating files"];
-  let lastText = "";
-  let rendered = false;
-  const isTty = Boolean(process.stderr.isTTY);
-  const format = () => {
-    const parts = stageOrder
-      .filter((stage) => stages.has(stage))
-      .map((stage) => `${stage.replace(" objects", "")} ${String(stages.get(stage)).padStart(3)}%`);
-    return parts.length > 0 ? `${label}: ${parts.join(" | ")}` : `${label}: starting`;
-  };
-  const writeProgress = () => {
-    rendered = true;
-    const text = format();
-    if (text === lastText) return;
-    lastText = text;
-    if (!isTty) return;
-    readline.clearLine(process.stderr, 0);
-    readline.cursorTo(process.stderr, 0);
-    process.stderr.write(text);
-  };
-  const render = (stage, percent) => {
-    const clamped = Math.max(0, Math.min(100, percent));
-    const bucket = clamped === 100 ? 100 : Math.floor(clamped / 5) * 5;
-    const previous = stages.get(stage);
-    if (previous === bucket) return;
-    stages.set(stage, bucket);
-    writeProgress();
-  };
-  return {
-    update(chunk) {
-      const text = chunk.replace(/\r/g, "\n");
-      for (const line of text.split("\n")) {
-        const match = line.match(/(Enumerating objects|Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files):\s+(\d+)%/);
-        if (match) {
-          render(match[1], Number(match[2]));
-        }
-      }
-    },
-    done() {
-      if (!rendered) stages.set("Updating files", 100);
-      const summary = format();
-      if (isTty) {
-        readline.clearLine(process.stderr, 0);
-        readline.cursorTo(process.stderr, 0);
-      }
-      process.stderr.write(`${summary}\n`);
-    },
-  };
 }
 
 export function spawnDetached(command, args = [], options = {}) {
