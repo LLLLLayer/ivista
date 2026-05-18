@@ -32,6 +32,50 @@ Use `accessibility-first` when the user asks to tap by text, use Accessibility, 
 
 Accessibility/source/text lookups default to 5 seconds. Keep examples at `--timeout 5000`, and only use longer waits for real loading states.
 
+## Coordinate Table
+
+Never guess raw coordinates from the rendered chat image. Before coordinate taps, build a small working table from the latest checkpoint.
+
+Start with:
+
+```bash
+ivista observe --port <port> --json
+```
+
+Use the screenshot artifact as the visual source of truth. When available, note:
+
+- WDA point size: device logical width and height, for example `393 x 852 pt`.
+- Screenshot pixel size: original PNG width and height, for example `1179 x 2556 px`.
+- Scale factors: `wdaX = imageX * wdaWidth / imageWidth`, `wdaY = imageY * wdaHeight / imageHeight`.
+- Safe regions: top navigation/status area, content area, bottom tab bar/home indicator area.
+- Common controls: top-left, top-right, bottom tab centers, visible primary buttons, list rows.
+- Accessibility candidates only if source returned quickly and clearly matches the visual target.
+
+For a 5-tab bottom bar, compute tab centers instead of eyeballing:
+
+```text
+tabWidth = screenWidth / 5
+tab1.x = tabWidth * 0.5
+tab2.x = tabWidth * 1.5
+tab3.x = tabWidth * 2.5
+tab4.x = tabWidth * 3.5
+tab5.x = tabWidth * 4.5
+tabY = visual center of the tab bar, often near screenHeight - 59
+```
+
+Keep the table short but explicit, for example:
+
+```text
+screen: 393 x 852 pt
+screenshot: 1179 x 2556 px
+scale: 0.333 x 0.333
+top-right action: x≈365 y≈56
+bottom tabs: x≈39/118/197/275/354 y≈793
+next tap: Messages tab -> x=275 y=793
+```
+
+If a tap misses, do not retry the same guessed point. Re-observe, compare before/after screenshots, update the table, and only then retry. If source returned a reliable rect within 5 seconds, use it as a calibration point; if source timed out or labels look wrong, keep using the visual table.
+
 ## Simulator Device Flow
 
 Use this when the user asks for a Simulator device, or when no usable real device is available after target discovery.
@@ -104,7 +148,7 @@ ivista wait idle --port <port> --stable-ms 1000 --timeout 5000
 ivista wait app --port <port> --bundle-id com.example.app --timeout 5000
 ```
 
-In the default `auto` strategy, observe first, use the screenshot to decide what should happen, and tap by coordinates when the visual target is clear. Use `--text`, `--contains`, or `--regex` only after the visual route is ambiguous or fails, or when the user asks for text/label-based operation. Use coordinates when the app is a game, canvas, custom-rendered screen, icon-heavy view, complex feed, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
+In the default `auto` strategy, observe first, make or update the coordinate table, use the screenshot to decide what should happen, and tap by coordinates when the visual target is clear. Use `--text`, `--contains`, or `--regex` only after the visual route is ambiguous or fails, or when the user asks for text/label-based operation. Use coordinates when the app is a game, canvas, custom-rendered screen, icon-heavy view, complex feed, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
 
 Text matching is normalized for case and whitespace. When several elements match, iVista prefers visible, enabled, accessible, smaller interactive elements over broad containers; still inspect candidates when the first match is not the intended target. When text is not found, failed semantic actions return nearby candidates and fix hints. Use those candidates to retry with `--contains`, `--regex`, or `--index`.
 
@@ -244,7 +288,7 @@ For navigation tasks:
 1. Confirm WDA with `ivista wda status --port <port>`.
 2. Launch the target app if needed.
 3. Run `ivista observe --port <port> --json` when the current screen is uncertain or when a full checkpoint is useful.
-4. In the default `auto` strategy, inspect the screenshot first and avoid Accessibility selectors unless the visual route is ambiguous, failed, or explicitly requested.
+4. In the default `auto` strategy, inspect the screenshot first, build/update the coordinate table, and avoid Accessibility selectors unless the visual route is ambiguous, failed, or explicitly requested.
 5. Prefer `wait idle`, `wait text`, `wait gone`, or `wait app` for tight action sequences.
 6. Tap or gesture by coordinates for visual-only controls, and by semantic selectors for stable text/label controls.
 7. Observe again after page transitions, alert handling, important state changes, failed semantic actions, or before exporting a report.

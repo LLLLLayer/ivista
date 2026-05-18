@@ -32,6 +32,10 @@ Honor explicit user preference:
 
 Keep Accessibility lookup timeouts short during operation. The CLI defaults Accessibility/source/text lookups to 5 seconds; pass `--timeout 5000` in examples and only use longer waits for real loading states.
 
+## Coordinate Table
+
+Before coordinate taps, build a small coordinate table from the latest screenshot/checkpoint instead of guessing. Record the target device point size, screenshot pixel size when available, scale factors, safe top/bottom areas, tab centers, and candidate tap points. Use this table to convert visual observations into WDA point coordinates and to explain retries after a miss.
+
 ## Safety
 
 - Observe when state is uncertain, after navigation/state changes, and before retries or reports. Use targeted waits for tight action sequences.
