@@ -5,7 +5,7 @@ description: Use this skill when the user wants to install, update, verify, diag
 
 # iVista Install
 
-Use this skill for setup, repair, and environment readiness. Do not use it for normal device operation after iVista is already ready; use the `ivista` skill for that.
+Use this skill for setup, repair, and environment readiness. Do not use it for normal device operation after iVista is already ready; use the `ivista-operate` skill for that.
 
 This plugin is skill-only. It does not expose MCP tools. Use the `ivista` CLI from the shell.
 

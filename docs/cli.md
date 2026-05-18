@@ -74,7 +74,7 @@ Use `device diagnose` when real-device WDA startup or wireless routing is unclea
 ```bash
 ivista wda cache status
 ivista wda list
-ivista wda prepare [--ref ivista-wda-v0.1.3]
+ivista wda prepare [--ref ivista-wda-v1.0.0]
 ivista wda start --simulator "iPhone 17" [--port 8100]
 ivista wda start --device <device-udid> --workspace MyApp.xcworkspace --scheme MyApp --auto-port
 ivista wda stop [--port 8100]

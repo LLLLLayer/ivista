@@ -7,7 +7,7 @@ Use this reference when the user asks Codex to operate a target iOS device, star
 Use the user's requested target:
 
 - Real device: user says iPhone, iPad, physical device, real device, USB, wireless, connected device, signing, Developer Mode, or provides a real-device UDID.
-- Simulator device: user says Simulator, simulated device, booted Simulator, or does not specify a target.
+- Simulator device: user says Simulator, simulated device, or booted Simulator.
 
 Do not answer a real-device request with Simulator commands. For real devices, go directly to [Real Device Flow](#real-device-flow).
 
@@ -22,7 +22,7 @@ If exactly one connected real device is visible and `ivista device diagnose --de
 
 ## Simulator Device Flow
 
-Use this when the user asks for a Simulator device or does not specify a target.
+Use this when the user asks for a Simulator device, or when no usable real device is available after target discovery.
 
 ```bash
 ivista doctor
@@ -42,7 +42,7 @@ ivista run export --format markdown
 ivista run export --format zip
 ```
 
-The Markdown report contains metadata, command counts, failures, screenshot previews, accessibility text snapshots,. The zip export includes the run folder plus `run-report.md`.
+The Markdown report contains metadata, command counts, failures, screenshot previews, and accessibility text snapshots. The zip export includes the run folder plus `run-report.md`.
 
 If there is already a booted Simulator device:
 
@@ -53,7 +53,7 @@ ivista wda status --port <port>
 
 ## Observe
 
-Always observe before acting. Prefer the single checkpoint command:
+Observe before acting when the current screen is uncertain or when the next action depends on UI state. Prefer the single checkpoint command:
 
 ```bash
 ivista observe --port <port>

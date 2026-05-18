@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the current release:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.0
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.1
 ivista doctor
 ```
 
 Update an existing install:
 
 ```bash
-ivista update --ref v1.0.0
+ivista update --ref v1.0.1
 ```
 
 ## Quick Start
@@ -56,24 +56,24 @@ ivista run start --project . --conversation smoke-settings
 ivista simulator list
 ivista simulator boot --name "iPhone 17"
 ivista wda start --simulator "iPhone 17" --auto-port --wait 180000
-ivista observe
+ivista observe --port <printed-port>
 ```
 
 Drive the Simulator:
 
 ```bash
-ivista act home
-ivista act tap --text "Settings"
-ivista act tap --text "General" --scroll
-ivista wait app --bundle-id com.apple.Preferences
-ivista wait idle
-ivista observe --json
+ivista act home --port <printed-port>
+ivista act tap --port <printed-port> --text "Settings"
+ivista act tap --port <printed-port> --text "General" --scroll
+ivista wait app --port <printed-port> --bundle-id com.apple.Preferences
+ivista wait idle --port <printed-port>
+ivista observe --port <printed-port> --json
 ```
 
 Stop WDA when you are done:
 
 ```bash
-ivista wda stop
+ivista wda stop --port <printed-port>
 ```
 
 ### Real Device
@@ -190,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a release:
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v1.0.0
+codex plugin marketplace add LLLLLayer/ivista --ref v1.0.1
 ```
 
 Claude Code:
@@ -226,7 +226,7 @@ iVista manages WebDriverAgent automatically. Users should not clone WDA manually
 Defaults:
 
 - WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
-- WDA ref: `ivista-wda-v0.1.3`
+- WDA ref: `ivista-wda-v1.0.0`
 - iVista home: `~/.ivista`
 - WDA cache: `~/.ivista/cache/webdriveragent/<ref>/`
 - WDA port: `8100`
@@ -236,8 +236,8 @@ The CLI pins a known-good WDA ref. The WDA fork evolves independently and is dow
 Override WDA only when needed:
 
 ```bash
-ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
-ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v0.1.3
+ivista wda prepare --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v1.0.0
+ivista wda start --simulator "iPhone 17" --repo https://github.com/LLLLLayer/ivista-wda.git --ref ivista-wda-v1.0.0
 ivista wda start --simulator "iPhone 17" --wda-path ./ivista-wda
 ```
 
@@ -269,7 +269,7 @@ iVista is released under the [MIT License](LICENSE).
 The CLI does not vendor WebDriverAgent into this repository's npm package, Codex plugin bundle, or Claude Code plugin bundle. By default, iVista downloads a pinned WDA fork at runtime:
 
 - WDA repo: `https://github.com/LLLLLayer/ivista-wda.git`
-- WDA ref: `ivista-wda-v0.1.3`
+- WDA ref: `ivista-wda-v1.0.0`
 - Cache path: `~/.ivista/cache/webdriveragent/<ref>/`
 
 The WDA fork is an independent open-source project with its own license and third-party notices. iVista also calls local tools such as Xcode, `xcodebuild`, `xcrun simctl`, Git, Node.js, and npm; those tools are not distributed with iVista and remain governed by their own licenses.

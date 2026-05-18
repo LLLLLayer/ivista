@@ -16,7 +16,7 @@ Usage:
   ivista simulator boot --name "iPhone 16"
   ivista device list [--connected] [--json]
   ivista device diagnose [--device <device-udid>] [--port 8100]
-  ivista wda prepare [--ref ivista-wda-v0.1.3]
+  ivista wda prepare [--ref ivista-wda-v1.0.0]
   ivista wda list
   ivista wda start [--port 8100]
   ivista wda start --simulator "iPhone 16" [--port 8100]
@@ -105,7 +105,7 @@ Options:
   --network               Force network mode for a real device.
   --usb                   Force USB iproxy for a real device.
   --repo <url>            WDA git repository.
-  --ref <ref>             WDA git ref. Defaults to ivista-wda-v0.1.3.
+  --ref <ref>             WDA git ref. Defaults to ivista-wda-v1.0.0.
   --timeout <ms>          Command timeout in milliseconds.
   --wait <ms>             WDA startup wait timeout in milliseconds.
 `);

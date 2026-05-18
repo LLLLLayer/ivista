@@ -17,7 +17,7 @@ Install for Codex:
 codex plugin marketplace add LLLLLayer/ivista
 ```
 
-Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v1.0.0`.
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v1.0.1`.
 
 For local development from this checkout:
 
@@ -50,7 +50,7 @@ The Claude Code skill names are namespaced by the plugin name:
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.0
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.1
 ivista doctor
 ```
 
@@ -127,9 +127,9 @@ ivista doctor
 ivista simulator list
 ivista simulator boot --name "iPhone 16"
 ivista wda start --simulator "iPhone 16" --auto-port
-ivista observe
-ivista act home
-ivista wda stop
+ivista observe --port <printed-port>
+ivista act home --port <printed-port>
+ivista wda stop --port <printed-port>
 ```
 
 WebDriverAgent is downloaded and cached automatically. Users do not need to clone WDA manually.
@@ -142,7 +142,7 @@ The CLI accepts these environment variables:
 
 - `IVISTA_HOME`: defaults to `~/.ivista`
 - `IVISTA_WDA_REPO`: defaults to `https://github.com/LLLLLayer/ivista-wda.git`
-- `IVISTA_WDA_REF`: defaults to `ivista-wda-v0.1.3`
+- `IVISTA_WDA_REF`: defaults to `ivista-wda-v1.0.0`
 - `IVISTA_WDA_PORT`: defaults to `8100`
 - `IVISTA_WDA_BASE_URL`: overrides the WDA URL for direct connections
 

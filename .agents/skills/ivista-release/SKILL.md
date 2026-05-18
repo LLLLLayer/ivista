@@ -65,7 +65,7 @@ Confirm dry-run package contents. `ivista-wda/` must not appear.
 - `package.json`, `src/cli/constants.mjs`, Codex plugin manifest, Claude plugin manifest, or Claude marketplace manifest disagree on the CLI version.
 - README, Chinese README, plugin docs, or skill references contain an old CLI tag such as a previous `v0.1.x` release.
 
-WDA refs such as `ivista-wda-v0.1.3` are independent and are allowed to differ from the CLI version.
+WDA refs such as `ivista-wda-v1.0.0` are independent and are allowed to differ from the CLI version.
 
 5. Commit, tag, and push the outer repo:
 
