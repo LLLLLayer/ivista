@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Install the current release:
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.31
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.0
 ivista doctor
 ```
 
 Update an existing install:
 
 ```bash
-ivista update --ref v0.1.31
+ivista update --ref v1.0.0
 ```
 
 ## Quick Start
@@ -190,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a release:
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v0.1.31
+codex plugin marketplace add LLLLLayer/ivista --ref v1.0.0
 ```
 
 Claude Code:

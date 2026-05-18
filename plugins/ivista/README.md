@@ -1,6 +1,6 @@
 # iVista Agent Plugin
 
-iVista is a CLI-first plugin for iOS Simulator and WebDriverAgent control. The plugin contributes skills that tell Codex or Claude Code how to install and use the `ivista` CLI.
+iVista is a CLI-first plugin for iOS device and WebDriverAgent control. The plugin contributes skills that tell Codex or Claude Code how to install and use the `ivista` CLI with Simulator devices or real iPhone/iPad devices.
 
 This directory is intentionally plugin-only: `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, skills, and plugin docs. The CLI implementation lives at the repository root in `bin/` and `src/`, and is installed through the npm package.
 
@@ -17,7 +17,7 @@ Install for Codex:
 codex plugin marketplace add LLLLLayer/ivista
 ```
 
-Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v0.1.31`.
+Then open Codex, go to the plugin marketplace, and install `iVista`. To pin a specific release, add `--ref v1.0.0`.
 
 For local development from this checkout:
 
@@ -50,7 +50,7 @@ The Claude Code skill names are namespaced by the plugin name:
 ## Install The CLI
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.31
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.0
 ivista doctor
 ```
 
@@ -151,6 +151,6 @@ Use `--wda-path` only for offline use, enterprise forks, or WDA debugging.
 ## Skills
 
 - `ivista-install`: install, update, diagnose, repair, and prepare Simulator or real-device prerequisites.
-- `ivista-operate`: operate a Simulator or real device after the CLI is available.
+- `ivista-operate`: operate the requested target device, either a Simulator device or a real iPhone/iPad, after the CLI is available.
 - `ivista-cleanup`: recover from stale WDA runners, dead ports, crashed Simulator sessions, and stuck forwarding.
 - `ivista-report`: export Markdown reports or zip debug bundles from project/conversation/run artifacts.

@@ -1,10 +1,28 @@
 # iVista Usage
 
-Use this reference when the user asks Codex to operate a Simulator/device, start/check WDA, take screenshots, read source, perform actions, manage apps, handle alerts, or run a mobile smoke-test flow.
+Use this reference when the user asks Codex to operate a target iOS device, start/check WDA, take screenshots, read source, perform actions, manage apps, handle alerts, or run a mobile smoke-test flow.
 
-## Default Simulator Flow
+## Pick The Target
 
-Prefer Simulator first unless the user explicitly asks for a real device.
+Use the user's requested target:
+
+- Real device: user says iPhone, iPad, physical device, real device, USB, wireless, connected device, signing, Developer Mode, or provides a real-device UDID.
+- Simulator device: user says Simulator, simulated device, booted Simulator, or does not specify a target.
+
+Do not answer a real-device request with Simulator commands. For real devices, go directly to [Real Device Flow](#real-device-flow).
+
+If the user does not specify a target, inspect availability before choosing:
+
+```bash
+ivista device list --connected
+ivista simulator list --booted
+```
+
+If exactly one connected real device is visible and `ivista device diagnose --device <device-udid>` looks usable, it is acceptable to try a limited real-device path for non-destructive validation, especially when the task sounds like physical-device validation. If real-device signing or transport looks fragile, fall back to the Simulator device path or ask for the target when the choice affects the result.
+
+## Simulator Device Flow
+
+Use this when the user asks for a Simulator device or does not specify a target.
 
 ```bash
 ivista doctor
@@ -26,7 +44,7 @@ ivista run export --format zip
 
 The Markdown report contains metadata, command counts, failures, screenshot previews, accessibility text snapshots,. The zip export includes the run folder plus `run-report.md`.
 
-If there is already a booted Simulator:
+If there is already a booted Simulator device:
 
 ```bash
 ivista simulator list --booted
@@ -118,7 +136,7 @@ ivista wda status --port <port>
 ivista wda stop --port <port>
 ```
 
-With a single booted Simulator, `wda start` can infer the target. Use `--simulator`, `--name`, or `--udid` when multiple Simulators are booted. Use `--auto-port` if the default port is busy or a previous WebDriverAgent runner crashed.
+With a single booted Simulator device, `wda start` can infer the target. For real devices, pass `--device <device-udid>`. Use `--simulator`, `--name`, or `--udid` when multiple Simulator devices are booted. Use `--auto-port` if the default port is busy or a previous WebDriverAgent runner crashed.
 
 WDA exposes a Mac-side status URL:
 
@@ -130,7 +148,7 @@ That page confirms WDA is connected and links to `/status` and `/health`. It doe
 
 ## Real Device Flow
 
-Use this only when the user explicitly asks for a real iPhone/iPad. Prefer finding signing settings from the user's current iOS project instead of asking them to open Xcode manually.
+Use this when the user asks for a real iPhone/iPad, connected device, physical device, USB, wireless, or provides a real-device UDID. Prefer finding signing settings from the user's current iOS project instead of asking them to open Xcode manually.
 
 Start by discovering the device:
 

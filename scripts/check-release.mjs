@@ -62,7 +62,7 @@ function collectTextFiles(dir = root, out = []) {
 
 const textFiles = collectTextFiles();
 
-const versionPattern = /\bv?0\.1\.\d+\b/g;
+const versionPattern = /\bv?\d+\.\d+\.\d+\b/g;
 
 const head = git(["rev-parse", "HEAD"]);
 const taggedCommit = git(["rev-parse", currentTag]);
@@ -75,10 +75,14 @@ for (const relativePath of textFiles) {
   if (!fs.existsSync(absolutePath)) continue;
   const lines = fs.readFileSync(absolutePath, "utf8").split(/\r?\n/);
   lines.forEach((line, index) => {
-    const matches = line.match(versionPattern) ?? [];
-    for (const match of matches) {
+    const matches = [...line.matchAll(versionPattern)];
+    for (const item of matches) {
+      const match = item[0];
+      const before = line[item.index - 1] || "";
+      const after = line[item.index + match.length] || "";
+      if (before === "." || after === ".") continue;
       if (match === version || match === currentTag) continue;
-      if (line.includes("ivista-wda-v")) continue;
+      if (line.includes(`ivista-wda-${match}`) || line.includes(`ivista-wda-v${match}`)) continue;
       failures.push(`${relativePath}:${index + 1}: stale CLI version ${match}`);
     }
   });

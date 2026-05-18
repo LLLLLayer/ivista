@@ -36,14 +36,14 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 安装当前版本：
 
 ```bash
-npm install -g git+https://github.com/LLLLLayer/ivista.git#v0.1.31
+npm install -g git+https://github.com/LLLLLayer/ivista.git#v1.0.0
 ivista doctor
 ```
 
 更新已有安装：
 
 ```bash
-ivista update --ref v0.1.31
+ivista update --ref v1.0.0
 ```
 
 ## 快速开始
@@ -190,7 +190,7 @@ codex plugin marketplace add LLLLLayer/ivista
 然后打开 Codex，在 plugin marketplace 里安装 `iVista`。固定到某个版本：
 
 ```bash
-codex plugin marketplace add LLLLLayer/ivista --ref v0.1.31
+codex plugin marketplace add LLLLLayer/ivista --ref v1.0.0
 ```
 
 Claude Code：
