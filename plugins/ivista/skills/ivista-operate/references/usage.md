@@ -20,6 +20,16 @@ ivista simulator list --booted
 
 If exactly one connected real device is visible and `ivista device diagnose --device <device-udid>` looks usable, it is acceptable to try a limited real-device path for non-destructive validation, especially when the task sounds like physical-device validation. If real-device signing or transport looks fragile, fall back to the Simulator device path or ask for the target when the choice affects the result.
 
+## Operation Strategy
+
+Default to `auto`: visual-led, Accessibility-assisted.
+
+In `auto`, treat the screenshot as the source of truth for what is visibly on screen. Use Accessibility source/texts as an actuator and confirmation layer when it gives a reliable text or label match. Use coordinates when the target is visual-only, icon-only, custom-rendered, or poorly represented in Accessibility.
+
+Use `vision-first` when the user asks to operate by sight, screenshot, visual target, coordinates, or says not to rely on Accessibility. In this mode, observe, inspect the screenshot, calculate the target point, act by coordinates or gestures, then observe or wait again.
+
+Use `accessibility-first` when the user asks to tap by text, use Accessibility, avoid coordinates, or operate by labels. In this mode, prefer `screen texts`, `wait text`, `wait gone`, and semantic actions such as `act tap --text`, `--contains`, or `--regex`. Keep Accessibility lookup timeouts short during normal operation, usually `--timeout 5000`, unless the user is waiting for a real loading state.
+
 ## Simulator Device Flow
 
 Use this when the user asks for a Simulator device, or when no usable real device is available after target discovery.
@@ -74,25 +84,25 @@ ivista screen texts --port <port>
 ```bash
 ivista act home --port <port>
 ivista act tap --port <port> --x 120 --y 500
-ivista act tap --port <port> --text "Wi-Fi"
-ivista act tap --port <port> --contains "Language"
+ivista act tap --port <port> --text "Wi-Fi" --timeout 5000
+ivista act tap --port <port> --contains "Language" --timeout 5000
 ivista act double-tap --port <port> --x 120 --y 500
-ivista act double-tap --port <port> --text "Photos"
+ivista act double-tap --port <port> --text "Photos" --timeout 5000
 ivista act two-finger-tap --port <port>
 ivista act long-press --port <port> --x 120 --y 500 --duration 1
-ivista act long-press --port <port> --text "App" --duration 1
+ivista act long-press --port <port> --text "App" --duration 1 --timeout 5000
 ivista act drag --port <port> --from-x 100 --from-y 600 --to-x 300 --to-y 200 --duration 0.5
 ivista act pinch --port <port> --scale 0.5 --velocity -1
 ivista act rotate --port <port> --rotation 1.57 --velocity 1
 ivista act input "hello" --port <port>
 ivista act swipe --port <port> --direction up
-ivista wait text "Done" --port <port> --timeout 10000
-ivista wait gone "Loading" --port <port> --timeout 10000
+ivista wait text "Done" --port <port> --timeout 5000
+ivista wait gone "Loading" --port <port> --timeout 5000
 ivista wait idle --port <port> --stable-ms 1000 --timeout 10000
 ivista wait app --port <port> --bundle-id com.example.app --timeout 10000
 ```
 
-Prefer `--text`, `--contains`, or `--regex` when the target appears in Accessibility. Use coordinates when the app is a game, canvas, custom-rendered screen, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
+In the default `auto` strategy, observe first, use the screenshot to decide what should happen, and use `--text`, `--contains`, or `--regex` only when the intended target is clearly represented in Accessibility. Use coordinates when the app is a game, canvas, custom-rendered screen, icon-heavy view, or has poor accessibility labels. Use `--index <n>` when multiple elements match.
 
 Text matching is normalized for case and whitespace. When several elements match, iVista prefers visible, enabled, accessible, smaller interactive elements over broad containers; still inspect candidates when the first match is not the intended target. When text is not found, failed semantic actions return nearby candidates and fix hints. Use those candidates to retry with `--contains`, `--regex`, or `--index`.
 
@@ -232,8 +242,9 @@ For navigation tasks:
 1. Confirm WDA with `ivista wda status --port <port>`.
 2. Launch the target app if needed.
 3. Run `ivista observe --port <port> --json` when the current screen is uncertain or when a full checkpoint is useful.
-4. Prefer `wait idle`, `wait text`, `wait gone`, or `wait app` for tight action sequences.
-5. Tap or gesture with semantic selectors when possible.
-6. Observe again after page transitions, alert handling, important state changes, failed semantic actions, or before exporting a report.
+4. In the default `auto` strategy, inspect the screenshot first, then use Accessibility selectors only when the visible target has a reliable label/text match.
+5. Prefer `wait idle`, `wait text`, `wait gone`, or `wait app` for tight action sequences.
+6. Tap or gesture by coordinates for visual-only controls, and by semantic selectors for stable text/label controls.
+7. Observe again after page transitions, alert handling, important state changes, failed semantic actions, or before exporting a report.
 
 For smoke tests, start an iVista run first and let `observe` store important checkpoints in `~/.ivista/projects/...`; avoid ad-hoc `/tmp` files unless the user asks for a specific output path.

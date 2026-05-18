@@ -21,6 +21,17 @@ Use the target the user names. If they mention a real iPhone, iPad, connected de
 
 Do not use iVista for generic web browser automation. Use browser tools for web pages.
 
+## Operation Strategy
+
+Default to `auto`: visual-led, Accessibility-assisted. Use screenshots from `ivista observe --json` as the source of truth for the visible screen, then use Accessibility text/source when it gives a reliable selector for the target. Tap by coordinates when the target is visual-only, icon-only, custom-rendered, or poorly labeled.
+
+Honor explicit user preference:
+
+- Use vision-first when the user asks to operate by sight, screenshot, visual target, coordinates, or says not to rely on Accessibility.
+- Use accessibility-first when the user asks to tap by text, use Accessibility, avoid coordinates, or operate by labels.
+
+Keep Accessibility lookup timeouts short during operation, usually `--timeout 5000`, unless the user is waiting for a real loading state.
+
 ## Safety
 
 - Observe when state is uncertain, after navigation/state changes, and before retries or reports. Use targeted waits for tight action sequences.
