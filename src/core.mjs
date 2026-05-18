@@ -4,7 +4,6 @@ import http from "node:http";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_WDA_REPO = "https://github.com/LLLLLayer/ivista-wda.git";
@@ -101,20 +100,17 @@ export function runCommand(command, args = [], options = {}) {
 }
 
 export function createGitProgressRenderer(label) {
+  const bucketSize = 25;
   let lastBucket = -1;
   let lastStage = "";
-  let lastText = "";
   let rendered = false;
   const writeLine = (text) => {
     rendered = true;
-    lastText = text;
-    readline.clearLine(process.stderr, 0);
-    readline.cursorTo(process.stderr, 0);
-    process.stderr.write(text);
+    process.stderr.write(`${text}\n`);
   };
   const render = (stage, percent) => {
     const clamped = Math.max(0, Math.min(100, percent));
-    const bucket = clamped === 100 ? 100 : Math.floor(clamped / 5) * 5;
+    const bucket = clamped === 100 ? 100 : Math.floor(clamped / bucketSize) * bucketSize;
     if (stage === lastStage && bucket === lastBucket) return;
     lastStage = stage;
     lastBucket = bucket;
@@ -135,7 +131,6 @@ export function createGitProgressRenderer(label) {
     },
     done() {
       if (!rendered) writeLine(`${label}: done`);
-      if (lastText) process.stderr.write("\n");
     },
   };
 }
